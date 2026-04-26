@@ -1,0 +1,2349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="description" content="Hallucination Aquarium — ornamental specimen catalog. Observe rare and unregistered fish admitted by a malfunctioning breeder database.">
+<title>Hallucination Aquarium — Ornamental Specimen Catalog</title>
+<style>
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    background: #faf7f2;
+    color: #2a2520;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 24px 40px;
+    line-height: 1.5;
+    transition: background 8s ease, color 4s ease;
+  }
+
+  /* ── Header ── */
+  .page-header {
+    padding: 28px 0 16px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .page-header h1 {
+    margin: 0;
+    font-size: 26px;
+  }
+  .page-header .hint {
+    color: #8a7a6a;
+    font-size: 13px;
+  }
+
+  /* ── Day/Night cycle background ── */
+  body.phase-dawn  { background: #fff0e8; }
+  body.phase-day   { background: #e8f4ff; }
+  body.phase-dusk  { background: #ffe8d8; }
+  body.phase-night { background: #0d1a2e; color: #c8d8e8; }
+
+  body.phase-night .hint            { color: #6a8090; }
+  body.phase-night .counter         { color: #6a8090; }
+  body.phase-night .dex-panel       { background: #0d1828; border-color: #1a2a3a; }
+  body.phase-night .dex-section     { background: #111f30; border-color: #1a2a3a; }
+  body.phase-night .dex-section summary { color: #8aaccc; }
+  body.phase-night .dex-item        { color: #7a9ab0; }
+  body.phase-night .creature        { background: #0f1e30; border-color: #1a2a3a; color: #c8d8e8; }
+  body.phase-night .creature .desc  { color: #8aaccc; }
+  body.phase-night .creature .name  { color: #d8e8f0; }
+  body.phase-night details.dev-tools summary { color: #6a8090; }
+
+  /* Night stars overlay */
+  body.phase-night::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 10%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 50% 35%, rgba(255,255,255,0.7) 0%, transparent 100%),
+      radial-gradient(1px 1px at 70% 15%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 85% 28%, rgba(255,255,255,0.6) 0%, transparent 100%),
+      radial-gradient(1px 1px at 20% 60%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1.5px 1.5px at 60% 5%, rgba(255,255,255,0.7) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 50%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 45% 80%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 75% 70%, rgba(255,255,255,0.4) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.8;
+  }
+  body.phase-night > * { position: relative; z-index: 1; }
+
+  /* ── Phase indicator ── */
+  .phase-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(0,0,0,0.08);
+    color: #8a7a6a;
+    margin-left: 4px;
+    transition: background 2s, color 2s;
+  }
+  body.phase-night .phase-badge { background: rgba(255,255,255,0.1); color: #8aaccc; }
+
+  /* ── Aquarium tank ── */
+  #aquarium {
+    position: relative;
+    width: 100%;
+    height: 180px;
+    border-radius: 14px;
+    overflow: hidden;
+    margin: 12px 0;
+    background: linear-gradient(180deg, #b8e8ff 0%, #78c8f0 60%, #40a8d8 100%);
+    border: 2px solid #a0d0e8;
+    transition: background 8s ease, border-color 4s ease;
+  }
+  body.phase-dawn  #aquarium { background: linear-gradient(180deg, #ffd8b0 0%, #f0a870 60%, #d87840 100%); border-color: #f0a870; }
+  body.phase-day   #aquarium { background: linear-gradient(180deg, #b8e8ff 0%, #78c8f0 60%, #40a8d8 100%); border-color: #a0d0e8; }
+  body.phase-dusk  #aquarium { background: linear-gradient(180deg, #ffc080 0%, #c06880 60%, #804090 100%); border-color: #c06880; }
+  body.phase-night #aquarium { background: linear-gradient(180deg, #0a1828 0%, #0a2040 60%, #081830 100%); border-color: #0a3060; }
+
+  /* Subtle shimmer on aquarium water */
+  #aquarium::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 30px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .aquarium-empty-hint {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    text-align: center;
+    pointer-events: none;
+  }
+
+  /* ── Fish sprites in aquarium ── */
+  .fish-sprite {
+    position: absolute;
+    font-size: 26px;
+    line-height: 1;
+    cursor: pointer;
+    user-select: none;
+    transition: filter 1.5s ease;
+    will-change: transform;
+  }
+  body.phase-night .fish-sprite { filter: brightness(0.85); }
+
+  .fish-sprite.pinned { outline: 2px solid rgba(255,255,255,0.9); border-radius: 4px; }
+
+  @keyframes fishRecoil {
+    0%   { transform: var(--fish-transform, translateX(0)) translateX(0) translateY(0); }
+    20%  { transform: var(--fish-transform, translateX(0)) translateX(-6px) translateY(-4px); }
+    40%  { transform: var(--fish-transform, translateX(0)) translateX(5px) translateY(3px); }
+    60%  { transform: var(--fish-transform, translateX(0)) translateX(-4px) translateY(-2px); }
+    80%  { transform: var(--fish-transform, translateX(0)) translateX(3px) translateY(2px); }
+    100% { transform: var(--fish-transform, translateX(0)) translateX(0) translateY(0); }
+  }
+  .fish-sprite.recoiling { animation: fishRecoil 0.4s ease-out; }
+
+  @keyframes fishFadeIn {
+    from { opacity: 0; transform: scale(0.5); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .fish-sprite.spawning { animation: fishFadeIn 0.5s ease-out forwards; }
+
+  @keyframes fishFadeOut {
+    from { opacity: 1; }
+    to   { opacity: 0; transform: scale(0.6); }
+  }
+  .fish-sprite.exiting { animation: fishFadeOut 0.8s ease-in forwards; }
+
+  /* ── Fish tooltip ── */
+  .fish-tooltip {
+    position: absolute;
+    background: rgba(20,20,30,0.9);
+    color: #f0f0f8;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 50;
+    max-width: 220px;
+    white-space: normal;
+    line-height: 1.4;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .fish-tooltip .ft-name { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+  .fish-tooltip .ft-sci  { font-style: italic; color: #a0c0d0; font-size: 11px; margin-bottom: 4px; }
+  .fish-tooltip .ft-rarity { font-size: 10px; color: #c0d0e0; }
+
+  /* ── Fish pinned card ── */
+  #pinned-card {
+    background: #fff;
+    border: 2px solid #a0d0e8;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin: 8px 0;
+    display: none;
+    font-size: 13px;
+    animation: creatureFadeIn 0.2s ease;
+  }
+  #pinned-card .pc-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+  #pinned-card .pc-sprite { font-size: 32px; }
+  #pinned-card .pc-name { font-size: 16px; font-weight: 700; }
+  #pinned-card .pc-sci { font-style: italic; color: #6a8090; font-size: 12px; }
+  #pinned-card .pc-desc { white-space: pre-wrap; color: #4a4038; line-height: 1.6; }
+  #pinned-card .pc-close {
+    float: right;
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-size: 18px;
+    color: #8a7a6a;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+  }
+  body.phase-night #pinned-card { background: #0f1e30; border-color: #1a4060; color: #c8d8e8; }
+  body.phase-night #pinned-card .pc-desc { color: #8aaccc; }
+
+  /* ── Action bar ── */
+  .action-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 8px 0;
+    flex-wrap: wrap;
+  }
+  .btn-release {
+    background: #2a2520;
+    color: #faf7f2;
+    border: none;
+    padding: 10px 22px;
+    font-size: 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .btn-release:hover { background: #555; }
+
+  body.phase-night .btn-release { background: #2a4a6a; }
+  body.phase-night .btn-release:hover { background: #3a6a9a; }
+
+  .spawn-status {
+    font-size: 12px;
+    color: #8a7a6a;
+    flex: 1;
+  }
+  body.phase-night .spawn-status { color: #6a8090; }
+
+  /* ── Dev tools (collapsed) ── */
+  details.dev-tools {
+    margin: 4px 0 12px;
+  }
+  details.dev-tools summary {
+    font-size: 12px;
+    color: #8a7a6a;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+  }
+  details.dev-tools summary::-webkit-details-marker { display: none; }
+  details.dev-tools summary::before {
+    content: '▶ ';
+    font-size: 10px;
+  }
+  details.dev-tools[open] summary::before { content: '▼ '; }
+  .dev-tools-inner {
+    display: flex;
+    gap: 8px;
+    padding: 8px 0;
+    flex-wrap: wrap;
+  }
+  .btn-dev {
+    background: transparent;
+    color: #8a7a6a;
+    border: 1px solid #ccc;
+    padding: 6px 14px;
+    font-size: 12px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .btn-dev:hover { background: #f0ece5; }
+
+  /* ── Tags ── */
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin-right: 6px;
+    vertical-align: middle;
+  }
+  .tag.common      { background: #d8d0c2; color: #555; }
+  .tag.uncommon    { background: #b8d8b8; color: #2a5030; }
+  .tag.rare        { background: #a8c0e8; color: #1a3070; }
+  .tag.legendary   { background: #e8c868; color: #6a3800; }
+  .tag.hallucination {
+    background: linear-gradient(90deg, #ff8ac0, #ffcc5a, #8affcc);
+    color: #fff;
+    font-weight: 700;
+  }
+  .tone-badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-right: 4px;
+    vertical-align: middle;
+    background: #ede8e0;
+    color: #7a6a5a;
+  }
+
+  /* ── NFT card elements ── */
+  .card-meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+  }
+  .card-edition {
+    font-size: 11px;
+    font-family: "Courier New", Courier, monospace;
+    background: #f0e8d8;
+    color: #6a4a2a;
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid #d8c8a8;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+  .card-hash {
+    font-size: 10px;
+    font-family: "Courier New", Courier, monospace;
+    color: #9a8a7a;
+    letter-spacing: 0.04em;
+  }
+  .card-rarity-pct {
+    font-size: 11px;
+    color: #7a6a5a;
+    margin-left: auto;
+  }
+
+  /* Trait chips */
+  .trait-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 4px 0;
+  }
+  .trait-chip {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: #f0ece4;
+    border: 1px solid #d0c8bc;
+    font-size: 11px;
+    font-weight: 600;
+    color: #4a4038;
+    letter-spacing: 0.02em;
+  }
+  body.phase-night .trait-chip { background: #1a2a3a; border-color: #2a3a4a; color: #8aaccc; }
+  body.phase-night .card-edition { background: #1a2030; color: #8aaccc; border-color: #2a3a4a; }
+  body.phase-night .card-hash { color: #5a7a8a; }
+  body.phase-night .card-rarity-pct { color: #6a8090; }
+
+  .card-provenance {
+    font-size: 11px;
+    color: #8a7a6a;
+    margin-top: 4px;
+    font-style: italic;
+  }
+  body.phase-night .card-provenance { color: #5a7a8a; }
+
+  /* ── Creature cards (dex list) ── */
+  .creature {
+    background: #fff;
+    border: 1px solid #e0d8cc;
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 10px 0;
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+  }
+  .sprite {
+    font-size: 44px;
+    line-height: 1;
+    width: 58px;
+    height: 58px;
+    text-align: center;
+    flex-shrink: 0;
+    background: #f3ece2;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .info { flex: 1; min-width: 0; }
+  .name {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 2px;
+    word-break: break-word;
+  }
+  .sci-name {
+    font-style: italic;
+    font-size: 12px;
+    color: #8a7a6a;
+    margin-bottom: 4px;
+  }
+  .desc {
+    color: #5a5040;
+    margin-top: 4px;
+    white-space: pre-wrap;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .count { margin-top: 16px; font-size: 13px; color: #8a7a6a; }
+
+  /* ── FX: Common ── */
+  @keyframes creatureFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .creature { animation: creatureFadeIn 0.2s ease; }
+  .creature.uncommon {
+    border-color: #a0c8a0;
+    background: #f4fbf4;
+    animation: creatureFadeIn 0.25s ease;
+  }
+
+  /* ── FX: Rare ── */
+  @keyframes rareSlideIn {
+    from { opacity: 0; transform: translateY(8px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .creature.rare {
+    border: 2px solid #6090d0;
+    background: #f0f4ff;
+    box-shadow: 0 0 10px rgba(96,144,208,0.3);
+    animation: rareSlideIn 0.35s ease-out;
+  }
+
+  /* ── FX: Legendary ── */
+  @keyframes legendaryPop {
+    from { opacity: 0; transform: scale(0.85); }
+    60%  { transform: scale(1.04); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes legendaryPulse {
+    0%, 100% { box-shadow: 0 0 16px rgba(208,144,10,0.4); }
+    50%       { box-shadow: 0 0 24px rgba(208,144,10,0.65); }
+  }
+  .creature.legendary {
+    border: 2px solid #d0900a;
+    background: linear-gradient(135deg, #fff9ee 0%, #fff3d0 100%);
+    animation: legendaryPop 0.45s cubic-bezier(0.34,1.56,0.64,1),
+               legendaryPulse 2s ease-in-out 0.45s infinite;
+  }
+
+  /* ── FX: Hallucination ── */
+  @keyframes hallucinationBloom {
+    0%   { opacity: 0; transform: scale(0.7) rotate(-2deg); filter: blur(4px); }
+    60%  { transform: scale(1.03) rotate(1deg); filter: blur(0); }
+    100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  }
+  @keyframes hallucinationShimmer {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  .creature.hallucination {
+    border: 2px solid transparent;
+    background-image:
+      linear-gradient(#fff0f8, #f0fff4, #f8f0ff),
+      linear-gradient(135deg, #ff8ac0, #ffcc5a, #8affcc, #8ac0ff, #ff8ac0);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    background-size: 200% 200%;
+    box-shadow:
+      0 0 20px rgba(255,138,192,0.35),
+      0 0 40px rgba(138,255,204,0.2);
+    animation:
+      hallucinationBloom 0.6s ease-out,
+      hallucinationShimmer 3s ease-in-out 0.6s infinite;
+  }
+
+  /* ── Hallucination tier announce overlay ── */
+  #tier-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.65);
+    z-index: 200;
+    pointer-events: none;
+  }
+  #tier-overlay.active { display: flex; }
+  @keyframes overlayFadeIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .overlay-inner {
+    background: linear-gradient(135deg, #fff0f8, #f0fff4, #f8f0ff);
+    border: 3px solid transparent;
+    background-image:
+      linear-gradient(135deg, #fff0f8, #f0fff4, #f8f0ff),
+      linear-gradient(135deg, #ff8ac0, #ffcc5a, #8affcc, #8ac0ff);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    border-radius: 20px;
+    padding: 32px 48px;
+    text-align: center;
+    animation: overlayFadeIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    max-width: 360px;
+  }
+  .overlay-emoji { font-size: 64px; margin-bottom: 12px; }
+  .overlay-title {
+    font-size: 22px;
+    font-weight: 800;
+    background: linear-gradient(90deg, #ff8ac0, #ffcc5a, #8affcc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  .overlay-subtitle {
+    font-size: 14px;
+    color: #6a5a4a;
+  }
+
+  /* ── Milestone toast ── */
+  .milestone-toast {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    background: #2a2520;
+    color: #faf7f2;
+    padding: 10px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    opacity: 0;
+    animation: toastIn 0.3s ease forwards, toastOut 0.3s ease 2.7s forwards;
+    pointer-events: none;
+    z-index: 100;
+    max-width: 300px;
+    white-space: normal;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+  }
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes toastOut {
+    from { opacity: 1; }
+    to   { opacity: 0; transform: translateY(-4px); }
+  }
+  body.phase-night .milestone-toast { background: #1a3a5a; }
+
+  /* ── Dex panel ── */
+  .dex-panel {
+    background: #fff;
+    border: 1px solid #e0d8cc;
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin: 16px 0 8px;
+  }
+  .dex-panel h2 {
+    margin: 0 0 12px;
+    font-size: 16px;
+  }
+  .dex-stats-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+    font-size: 13px;
+  }
+  .dex-stat {
+    background: #f5f0e8;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+  }
+  .dex-stat strong { font-size: 18px; display: block; line-height: 1.2; }
+  .dex-stat span { color: #8a7a6a; }
+
+  details.dex-section {
+    background: #f9f6f0;
+    border: 1px solid #e8e0d4;
+    border-radius: 8px;
+    margin: 6px 0;
+    overflow: hidden;
+  }
+  details.dex-section summary {
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+  }
+  details.dex-section summary::-webkit-details-marker { display: none; }
+  details.dex-section summary::before { content: '▶ '; font-size: 10px; }
+  details.dex-section[open] summary::before { content: '▼ '; }
+  .dex-items {
+    padding: 4px 14px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .dex-item {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: #ede8e0;
+    color: #5a5040;
+  }
+
+  /* ── Dex list header ── */
+  .dex-list-header {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 16px 0 4px;
+    color: #4a4038;
+  }
+</style>
+</head>
+<body class="phase-day">
+
+<div class="page-header">
+  <h1>🐟 Hallucination Aquarium</h1>
+  <span class="hint">Press Release Specimen to admit an ornamental specimen to the collection. Catalog resets on refresh.</span>
+  <span class="phase-badge" id="phaseBadge">☀️ Day</span>
+</div>
+
+<!-- Aquarium tank -->
+<div id="aquarium">
+  <div class="aquarium-empty-hint" id="aquariumEmptyHint">
+    A curated specimen will drift in shortly…
+  </div>
+</div>
+
+<!-- Pinned card -->
+<div id="pinned-card">
+  <button class="pc-close" onclick="unpinFish()">✕</button>
+  <div class="pc-header">
+    <span class="pc-sprite" id="pcSprite"></span>
+    <div>
+      <div class="pc-name" id="pcName"></div>
+      <div class="pc-sci" id="pcSci"></div>
+    </div>
+    <span id="pcTag"></span>
+  </div>
+  <div class="pc-desc" id="pcDesc"></div>
+</div>
+
+<!-- Action bar -->
+<div class="action-bar">
+  <button class="btn-release" id="releaseBtn" onclick="manualSpawn()">🔭 Release Specimen</button>
+  <span class="spawn-status" id="spawnStatus"></span>
+</div>
+
+<!-- Dev tools (collapsed) -->
+<details class="dev-tools">
+  <summary>🧪 Dev Tools</summary>
+  <div class="dev-tools-inner">
+    <button class="btn-dev" id="gen10Btn" onclick="for(let i=0;i<10;i++) spawnCreature()">× 10 Admit</button>
+    <button class="btn-dev" id="clearBtn" onclick="resetAll()">🚿 Drain Catalog</button>
+  </div>
+</details>
+
+<!-- Dex panel -->
+<div class="dex-panel" id="dexPanel">
+  <h2>📋 Specimen Catalog</h2>
+  <div class="dex-stats-row" id="dexStats">
+    <div class="dex-stat"><strong id="statTotal">0</strong><span>Total</span></div>
+    <div class="dex-stat"><strong id="statCommon">0</strong><span>CLASS I</span></div>
+    <div class="dex-stat"><strong id="statUncommon">0</strong><span>CLASS II</span></div>
+    <div class="dex-stat"><strong id="statRare">0</strong><span>CLASS III</span></div>
+    <div class="dex-stat"><strong id="statLegendary">0</strong><span>CLASS IV</span></div>
+    <div class="dex-stat"><strong id="statHallucination">0</strong><span>★ UNCLASS.</span></div>
+  </div>
+
+  <!-- Axis-based progress sections: species, variant traits, habitats -->
+  <details class="dex-section" id="dexSpeciesSection">
+    <summary>Species Registry — <span id="dexSpeciesCount">0</span> / 60 species identified</summary>
+    <div class="dex-items" id="dexSpeciesItems"></div>
+  </details>
+  <details class="dex-section" id="dexTraitSection">
+    <summary>Variant Traits Documented — <span id="dexTraitCount">0</span> traits recorded</summary>
+    <div class="dex-items" id="dexTraitItems"></div>
+  </details>
+  <details class="dex-section" id="dexHabitatSection">
+    <summary>Habitat Registry — <span id="dexHabitatCount">0</span> / 50 sites logged</summary>
+    <div class="dex-items" id="dexHabitatItems"></div>
+  </details>
+</div>
+
+<!-- Dex list header -->
+<div class="dex-list-header" id="dexListHeader" style="display:none">Catalog Entries</div>
+<div id="list"></div>
+<div class="count" id="counter"></div>
+
+<!-- Hallucination tier announce overlay -->
+<div id="tier-overlay">
+  <div class="overlay-inner">
+    <div class="overlay-emoji" id="overlayEmoji">✨</div>
+    <div class="overlay-title" id="overlayTitle">★ UNCLASSIFIED ★</div>
+    <div class="overlay-subtitle" id="overlaySubtitle">This specimen has not been classified by any recognized registry.</div>
+  </div>
+</div>
+
+<script>
+// =============================================================================
+// SEED ARRAYS — §1 of ornamental-fish-v4.md
+// =============================================================================
+
+const SPECIES = [
+  // Freshwater — livebearers & bettas
+  "Guppy",
+  "Endler's Livebearer",
+  "Molly",
+  "Platy",
+  "Swordtail",
+  "Betta",
+  // Freshwater — cichlids
+  "Discus",
+  "Angelfish",
+  "Oscar",
+  "Flowerhorn",
+  "African Cichlid",
+  "Jack Dempsey Cichlid",
+  "Peacock Cichlid",
+  "Parrotfish",
+  "Convict Cichlid",
+  // Freshwater — goldfish variants
+  "Oranda Goldfish",
+  "Ranchu Goldfish",
+  "Ryukin Goldfish",
+  "Telescope Goldfish",
+  "Bubble Eye Goldfish",
+  "Pearlscale Goldfish",
+  // Freshwater — tetras & schoolers
+  "Cardinal Tetra",
+  "Neon Tetra",
+  "Rummy-nose Tetra",
+  "Black Skirt Tetra",
+  // Freshwater — catfish & bottom dwellers
+  "Pleco",
+  "Bristlenose Pleco",
+  "Corydoras",
+  "Otocinclus",
+  "Kuhli Loach",
+  // Freshwater — gouramis & labyrinth
+  "Pearl Gourami",
+  "Dwarf Gourami",
+  "Honey Gourami",
+  // Freshwater — exotic & show
+  "Arowana",
+  "Koi",
+  "Axolotl",
+  "Garra Rufa",
+  "Rope Fish",
+  "Elephant Nose Fish",
+  "African Butterfly Fish",
+  "Freshwater Stingray",
+  // Freshwater — shrimp & inverts
+  "Crystal Red Shrimp",
+  "Cherry Shrimp",
+  "Amano Shrimp",
+  "Mystery Snail",
+  "Nerite Snail",
+  "Rabbit Snail",
+  // Saltwater — reef community
+  "Clownfish",
+  "Mandarin Dragonet",
+  "Seahorse",
+  "Firefish Goby",
+  "Watchman Goby",
+  "Clown Goby",
+  "Flasher Wrasse",
+  "Six-line Wrasse",
+  "Royal Gramma",
+  // Saltwater — tangs & display
+  "Blue Hippo Tang",
+  "Yellow Tang",
+  "Flame Angelfish",
+  "Copperband Butterflyfish"
+];
+
+const VARIANT_TRAITS = [
+  // Color patterns
+  "Albino",
+  "Marble",
+  "Galaxy",
+  "Piebald",
+  "Koi-pattern",
+  "Mosaic",
+  "Panda",
+  "Snakeskin",
+  "Cobra",
+  "Tuxedo",
+  "Neon",
+  "Sunset",
+  "Solar Flare",
+  "Black-metallic",
+  "Gold-dust",
+  "Platinum",
+  "Champagne",
+  "Chocolate",
+  "Blue Steel",
+  "Copper",
+  "Tri-color",
+  "Bi-color",
+  "Snow",
+  "Obsidian",
+  "Ghost",
+  "Phantom",
+  "Hellboy",
+  "Candy",
+  "Multicolor",
+  "Yellow-base",
+  // Body / scale texture
+  "Dragon-scale",
+  "Metallic",
+  "Satin",
+  "Dumbo",
+  "Fancy",
+  "Jumbo",
+  "Micro",
+  "Balloon",
+  "Short-body",
+  "Crowntail",
+  "Halfmoon",
+  "Double-tail",
+  "Plakat",
+  "Spadetail",
+  "Combtail",
+  "Veiltail",
+  // Fin type / length
+  "Longfin",
+  "Shortfin",
+  "Super Delta",
+  "Over-halfmoon",
+  "Rosetail",
+  "Feathertail",
+  "Butterfly",
+  "Flagtail",
+  "Pintail",
+  "Fullmoon",
+  // Special designations
+  "Full-red",
+  "Moscow",
+  "Yellow Tail",
+  "Lazuli",
+  "Emerald",
+  "Emperor",
+  "Royal",
+  "Show-grade",
+  "F1 Import",
+  "Wild-type",
+  "Back-bred",
+  "Line-bred",
+  "Foundation",
+  "OHM",
+  "HMPK",
+  "Giant"
+];
+
+const LINEAGES = [
+  "Thai Line 2019",
+  "Japanese Nisai Spawn",
+  "Amazon Wild-Caught Strain",
+  "Singapore 2021 F3",
+  "German Blue Line",
+  "Florida Certified Stock",
+  "Back-Bred Mutation 2023",
+  "Indonesia Origin 2018",
+  "Taiwan Top-Grade F2",
+  "Malaysian Import Line",
+  "Czech Breeding Project 2020",
+  "Ukrainian Albino Strain",
+  "California Domestic F4",
+  "Hong Kong Show Line 2022",
+  "Brazilian Wild-Type 2017",
+  "Sri Lanka Blue Line",
+  "Thai Red-Base F5",
+  "Ohio Domestic Strain",
+  "Korean Platinum Project",
+  "Dutch Longfin Line 2021",
+  "IBC Qualified Stock 2023",
+  "Aquarama Singapore Origin",
+  "F1 Domestic Cross 2024",
+  "Original Importer Stock",
+  "Collector Estate Line"
+];
+
+const HABITATS = [
+  // Planted / aquascape setups
+  "a densely planted iwagumi layout",
+  "a Dutch-style planted tank with alternating stem rows",
+  "a Walstad dirted tank with no CO2 injection",
+  "a high-tech planted nano with pressurized CO2",
+  "a low-tech 29-gallon with floaters and dim lighting",
+  "a jungle-style unscaped tank the owner calls 'natural'",
+  // Biotope setups
+  "a blackwater biotope with tannins at 8ppm",
+  "an Amazonian biotope with fine sand and driftwood",
+  "the Lake Tanganyika rock zone recreated in a 75-gallon",
+  "a West African stream biotope with current pump",
+  "a Lake Malawi cichlid tank with crushed coral substrate",
+  "a Southeast Asian softwater setup",
+  // Natural habitats
+  "a Rio Negro tributary, water nearly black",
+  "the upper Xingu drainage in Brazil",
+  "the flooded forest margins of the Amazon basin",
+  "a Mekong lowland rice paddy drainage",
+  "a Japanese koi pond in November",
+  "a shallow tidal flat in the Philippine Sea",
+  "a coral rubble zone at 15-foot depth",
+  "the zooxanthellae column of a Pacific reef face",
+  // Breeder / industry environments
+  "a Thai breeder's outdoor concrete vat",
+  "a Singapore fish farm raceway tank",
+  "the overflow trough of a wholesaler's holding tank",
+  "a Jakarta facility grow-out barrel, 2022 spawn",
+  "a Florida tropical fish farm pond",
+  "a plastic tub in a spare bedroom in Van Nuys",
+  "a basement fishroom with 28 running tanks",
+  "a garage fishroom with a 300-gallon sump system",
+  "the culling tank at a show-breeder's facility",
+  // Retail / display environments
+  "a 240-gallon community display at a boutique fish store",
+  "the cooler near the filter output in a neglected pet store",
+  "a retail cup on the shelf next to the conditioners",
+  "a display tank with too many species and one pleco",
+  "the quarantine system of a reputable online vendor",
+  // Reef / saltwater
+  "a 180-gallon SPS-dominant reef with calcium reactor",
+  "a mixed reef running Zeovit methodology",
+  "a FOWLR with a 30-year-old emperor angelfish",
+  "a frag tank at a coral vendor's facility",
+  "a nano reef in a 10-gallon Fluval spec",
+  "the sump of a 200-gallon reef system",
+  // Quirky / deadpan
+  "a 5-gallon Spec V in a pediatric dentist's waiting room",
+  "an office desk cube measuring 2.5 gallons",
+  "a hotel lobby feature wall aquarium, poorly maintained",
+  "a 10-gallon in a college dorm, pH never tested",
+  "the impulse-buy tank of someone who watched one YouTube video",
+  "a 40-gallon breeder the owner insists is temporary"
+];
+
+const FOODS = [
+  // Frozen / live
+  "frozen bloodworms",
+  "live brine shrimp nauplii",
+  "frozen mysis shrimp",
+  "frozen daphnia",
+  "live blackworms",
+  "mosquito larvae",
+  "live tubifex worms",
+  "white worms from a culture the owner has maintained for two years",
+  "grindal worms",
+  "live daphnia",
+  // Dry / pellet
+  "Hikari sinking pellets",
+  "New Life Spectrum micro pellets",
+  "Repashy Spawn & Grow gel food",
+  "Repashy Super Green gel food",
+  "spirulina wafers",
+  "Omega One betta pellets",
+  "Bug Bites tropical formula",
+  "Xtreme Krill Flakes",
+  "Vibra Bites by Hikari",
+  "Ken's premium flake",
+  // Specialty / controversial
+  "beefheart paste (controversial)",
+  "banana peppers, blended (disputed method)",
+  "egg yolk paste, used once, regretted",
+  "home-cultured green water",
+  "biofilm scraped from aged driftwood",
+  "blanched zucchini rounds",
+  "blanched spinach, clipped to the glass",
+  "algae wafers they ignore if bloodworms are available",
+  "nori sheet (saltwater use)",
+  "golden pearls WDFD 5-50 micron for fry",
+  // Context-flavored
+  "whatever sinks from the surface skimmer",
+  "the flake the owner has used since 1997",
+  "whatever the corydoras doesn't finish",
+  "the automated feeder, set on 'overload' by accident",
+  "three bloodworms per day (per the breeder's strict note)",
+  "nothing, reportedly, and yet it thrives",
+  "the algae bloom the owner has been failing to control",
+  "a brand discontinued in 2018, sourced from eBay",
+  "the food its tankmate refused",
+  "the worms its tank neighbor ate first"
+];
+
+const BEHAVIORS = [
+  // Classic betta / labyrinth behavior
+  "Glass-surfs only when the ceiling fan rotates.",
+  "Builds a bubble nest that nobody asked for.",
+  "Flares fins at its own reflection for 14 minutes, then loses interest.",
+  "Responds to its owner's face but not the owner's hand.",
+  "Spits food out three times, then eats it on the fourth drop.",
+  // Territorial behavior
+  "Guards a single rock against a species that is not present.",
+  "Charges the feeding ring but will not enter it.",
+  "Claims the left corner of the tank and enforces that claim.",
+  "Rearranges the gravel substrate every third night.",
+  "Attempts to eat the thermometer probe.",
+  // Schooling / social dynamics
+  "Schools tightly during LED blue hour, disperses otherwise.",
+  "Refuses to school until the tank population reaches exactly 9.",
+  "Leads the school toward the filter intake and then stops.",
+  "Achieves shoal coherence only during feeding, then fragments.",
+  "Observes schoolmates from a fixed position 2 inches above gravel.",
+  // Feeding quirks
+  "Refuses food on Sundays.",
+  "Accepts food only from the owner's left hand.",
+  "Eats exclusively at depth, ignoring surface feeders.",
+  "Waits for all other fish to feed before approaching.",
+  "Fasts voluntarily for four days post-water-change.",
+  "Accepts frozen bloodworms; rejects live bloodworms on principle.",
+  // Health & response behaviors
+  "Shows no measurable stress indicators despite the ammonia reading.",
+  "Velvet-clears without treatment in a planted tank. Forum posts remain disputed.",
+  "Developed a stress stripe the day the heater brand was changed.",
+  "Recovers from fin rot faster than the treatment timeline suggests.",
+  "Eats normally throughout a 0.5ppm ammonia reading. No signs.",
+  // Display & personality
+  "Paces the front glass exactly at 7:30 AM.",
+  "Sleeps wedged vertically between the heater and the back glass.",
+  "Investigates every new object placed in the tank within 90 seconds.",
+  "Recognizes the approach of the food container from 4 feet away.",
+  "Follows the magnetic algae scraper the length of the tank.",
+  "Has not been seen resting in two years of ownership.",
+  // Pleco / catfish behaviors
+  "Remains stationary for 19 hours, then relocates 3 inches.",
+  "Rasps the same driftwood log every night at midnight.",
+  "Hides inside the ceramic cave and is assumed dead every three weeks.",
+  "Emerges from the cave exactly once and will not repeat it.",
+  // Shrimp / invert behaviors
+  "Molts during a 15% water change. Timing unverified.",
+  "Grazes on biofilm in a circuit pattern that suggests a preference.",
+  "Carries eggs for 28 days; releases them into the filter intake.",
+  "Grooms the corydoras. The corydoras accepts this.",
+  // Saltwater behaviors
+  "Selects the most expensive coral head as its anemone substitute.",
+  "Rearranges a single piece of frag rubble compulsively.",
+  "Attends the glass every feeding but turns down nori.",
+  "Ignores all tankmates except the goby, whom it monitors closely.",
+  // Absurdist observations
+  "Achieves a calming effect on the tank that no parameter explains.",
+  "Has outlived three tanks, two heaters, and one marriage.",
+  "Is referenced by username in at least one archived forum thread.",
+  "Exhibits a behavioral quirk that contradicts four Wikipedia sentences."
+];
+
+const TRAIT_LORE = [
+  "One of 247 documented specimens with this color expression.",
+  "Pattern stabilized in 2019 by a Bangkok breeder.",
+  "Sold at auction for an undisclosed sum.",
+  "Featured in the 2023 Aquama Tokyo Expo catalog.",
+  "Traced to a single founder pair, names withheld.",
+  "Disqualified from IBC show judging for ambiguous category classification.",
+  "Holds the 2022 longest-fin regional title.",
+  "Lineage appears in the GFSA registry under a different collector name.",
+  "Fin expression considered unstable; mutation confirmed in F2.",
+  "Photographed in the 2021 TFH print edition.",
+  "Acquired in a lot of 12; this specimen was the only survivor.",
+  "Breeder retired after this spawn. Line considered closed.",
+  "Color band does not breed true. Prized for this.",
+  "Documented in two academic papers under a provisional species name.",
+  "Exceeded expected show dimensions by 18%.",
+  "Spawn of the last known pair from the original import.",
+  "Exhibited at Aquarama Singapore 2022 under a different working name.",
+  "Traded in a three-way deal involving a Florida exporter.",
+  "Registry entry lists country of origin as 'unverified.'",
+  "Classified as an accidental hybrid by one judge; disputed by three others.",
+  "The fin mutation recurred independently in a Czech line two years later.",
+  "Held the auction record for its class for 14 months.",
+  "Genetic sample retained by the importer. Results pending.",
+  "Not listed in the current CITES appendix. This may change.",
+  "The pigmentation regressed in F3; F1 and F2 are considered definitive.",
+  "Owner sold the line to a Singapore facility in 2022.",
+  "Three show-quality siblings are unaccounted for.",
+  "A photo of this specimen circulates on hobbyist forums without attribution.",
+  "Long-fin expression appeared without intentional selective pressure.",
+  "The exporting farm closed one year after this specimen shipped.",
+  "Judged 'best in class' at a regional show that has since disbanded.",
+  "Import papers describe a different species. Mislabeling suspected.",
+  "The color base is consistent with a mutation first documented in 1997.",
+  "Two specimens from this batch are in university collection.",
+  "The breeder's notes reference a 'fourth generation refinement.'",
+  "Arrived at quarantine with no documentation. Papers reconstructed.",
+  "Fin shape matches a 2018 Japanese line but origin is unverified.",
+  "An off-show specimen; the show fish are in private collections.",
+  "Considered the last verified F2 from the original import batch.",
+  "Listed in a collector's estate inventory, 2021 auction.",
+  "Produced from a pairing the breeder considered a long shot.",
+  "The first specimen from this variant to ship commercially.",
+  "Referenced in the hobbyist newsletter AQUA Notes, March 2020.",
+  "Owner has declined to sell three times. Offered twice by intermediaries.",
+  "Fin length documented at 2.3x body length. Registry note flags anomaly.",
+  "Shows signs of a recessive trait not expressed in either parent.",
+  "Photographed for a magazine spread; image was cut from final print.",
+  "Purchased from a wholesaler's clearance rack for $4.",
+  "The scale count is inconsistent with the recorded species. Filed.",
+  "Recovered from a tank that had been unattended for six weeks."
+];
+
+const WEAKNESSES = [
+  "temperature swings beyond 2°F per hour",
+  "dissolved copper above 0.1ppm",
+  "LED spectrums below 6500K",
+  "ammonia spikes after a missed water change",
+  "pH below 6.5 in a non-blackwater setup",
+  "pH above 7.8",
+  "KH below 3 in soft water setups",
+  "TDS above 250ppm",
+  "any automated feeder — ever",
+  "the sound of a heater clicking on",
+  "chloramine in municipal tap water",
+  "live plants it mistakes for competitors",
+  "salt creep entering the sump from an evaporation event",
+  "hard water above GH 15",
+  "any medication containing malachite green",
+  "metronidazole at above-label doses",
+  "water changes larger than 30% without temperature matching",
+  "the magnet scraper coming within 3 inches of its territory",
+  "gravel vacuuming on a Wednesday",
+  "any new fish added without a 4-week quarantine",
+  "the owner's reflection at night",
+  "the airline tubing vibrating against the glass",
+  "dissolved oxygen below 7ppm",
+  "an airstone placed near its resting position",
+  "other males of the same species",
+  "its own fry",
+  "the filter output aimed directly at its preferred corner",
+  "nitrate above 20ppm sustained over three weeks",
+  "flake food after conditioning on live or frozen",
+  "bright light before a 30-minute acclimation period",
+  "acoustic vibrations from subwoofers near the tank stand",
+  "spray bottles, aerosols, or air fresheners near the tank",
+  "phosphate above 0.25ppm",
+  "silicate in the water column above 1ppm",
+  "tank mates with aggressive fin-nipping records",
+  "fluctuating salinity in a reef setting",
+  "any dewormer added without reef-safe verification",
+  "the QT tank being smaller than the display tank",
+  "being moved during an active bubble nest build",
+  "the owner's decision to 'just add one more fish'"
+];
+
+const CATCH_ORIGINS = [
+  "Wild-caught, Rio Negro tributary, 2018.",
+  "Captive-bred, Jakarta facility, 2022 spawn.",
+  "Confiscated import, Miami CBP, 2021.",
+  "Donated by a returning collector, 2020.",
+  "Private breeder estate sale, 2019, undisclosed location.",
+  "Captive-bred, Singapore exporter, F3 domestic line, 2023.",
+  "Wild-caught, Mekong basin, Thailand, 2017.",
+  "Captive-bred, Florida farm, commercial grade, 2022.",
+  "Unknown origin; paperwork lists 'tropical Asia, unspecified.'",
+  "Acquired at auction, Denver Koi Fest 2021.",
+  "Wild-caught, Xingu River system, Brazil, 2016. Permit verified.",
+  "Captive-bred, Czech Republic, IBC-registered line, 2020.",
+  "Captive-bred, Los Angeles basement fishroom, 2023.",
+  "Wild-caught, Kalimantan, Indonesia. CITES II. 2019.",
+  "Captive-bred, Taiwan, show-grade pool, F5, 2022.",
+  "Rescue specimen, LFS liquidation, 2021. Origin undocumented.",
+  "Wild-caught, Lake Tanganyika, Tanzania, 2018.",
+  "Imported via intermediary, Malaysia, 2020. Re-export flagged.",
+  "Captive-bred, Ohio hobbyist, line in maintenance since 2014.",
+  "Wild-caught, Philippines reef collection, CITES-exempt, 2019.",
+  "Captive-bred, Munich hobbyist collective, 2021 season.",
+  "Lot purchase, Bangkok wholesaler, 2020. Species listed generically.",
+  "Wild-caught, Amazon mainstem, 2017. Two in the original shipment.",
+  "Captive-bred, New Jersey commercial importer, F2, 2023.",
+  "Rescued from display tank decommission, aquarium hotel, 2022.",
+  "Captive-bred, Ukrainian show line, exported prior to 2022.",
+  "Wild-caught, Rio Tapajos, 2015. One of four in the import.",
+  "Captive-bred, private Minnesota breeder, 2020. Line retired.",
+  "Acquired through hobbyist exchange, no documentation retained.",
+  "Wild-caught, Okinawan coastal reef, 2019. Import licensed.",
+  "Captive-bred, Vancouver Island facility, 2021 spawn.",
+  "Confiscated ornamental import, LAX port, 2018. Rehomed.",
+  "Wild-caught, Sri Lankan river system, 2016.",
+  "Captive-bred, Dutch breeding cooperative, 2022.",
+  "Pair split, collector estate, California, 2020.",
+  "Wild-caught, Venezuelan llanos drainage, 2018.",
+  "Captive-bred, Osaka hobbyist, Nisai class 2022.",
+  "Acquired via online auction; stated origin Japan, unverified.",
+  "Captive-bred, Houston fishroom, 2021. Breeder moved, line dispersed.",
+  "Wild-caught, Peruvian Amazon, 2019. CITES paperwork attached."
+];
+
+const CLASSIFICATIONS = [
+  "Freshwater Nano Specimen",
+  "Show-Grade Ornamental",
+  "Exhibition-Tier Breed",
+  "Foundation Stock",
+  "Retired Tournament Line",
+  "Heirloom Variant",
+  "Freshwater Centerpiece Specimen",
+  "Saltwater Display-Quality Specimen",
+  "Aquascape Foreground Specimen",
+  "Aquascape Midground Specimen",
+  "Biotope-Authentic Specimen",
+  "Rare Import Specimen",
+  "Restricted Import Specimen",
+  "Closed Lineage Specimen",
+  "Open-Registry Specimen",
+  "IBC-Eligible Specimen",
+  "GFSA-Registered Line",
+  "KHA Certified Koi Grade",
+  "Nano Reef Candidate",
+  "Softwater Specialist",
+  "Hardwater Adapted Line",
+  "Blackwater Biotope Specimen",
+  "Brackish-Tolerant Variant",
+  "Captive-Bred Conservation Stock",
+  "Commercial Grade, Unexpected Quality",
+  "Rescue-and-Rehabilitated Specimen",
+  "Experimental Mutation, Unstabilized",
+  "Established Mutation, Confirmed F3+",
+  "Wild-Type Preservationist Stock",
+  "First Domestic Generation (F1)",
+  "Advanced Domestic Line (F4+)",
+  "Hybrid Origin, Disputed Classification",
+  "Single Spawn Recovery",
+  "Show Retiree, Breeding Program Entry",
+  "Retired Show Champion",
+  "Pre-export Holding Specimen",
+  "Auction Lot Survivor",
+  "Estate Collection Transfer",
+  "Long-Term Captive Specimen (5+ Years)",
+  "Original Import Stock, Unmodified",
+  "Selective Pressure Line, Generation 3",
+  "Double Recessive Expression",
+  "Single Dominant Mutation",
+  "Back-Cross Stabilization Project",
+  "Type Specimen, Pending Registration",
+  "Flagship Specimen, Discontinued Facility",
+  "Hobbyist-Grade Show Attempt",
+  "Certified Aquama Expo Participant",
+  "IBC Disqualified — Category Ambiguous",
+  "Unregistered — Acquisition Pending"
+];
+
+const TANK_CONDITIONS = [
+  "pH 7.2, slowly declining",
+  "pH 6.8, stable for now",
+  "pH 8.2, buffered by coral substrate",
+  "GH 8, KH 4",
+  "GH 3, KH 1 — soft and acidic as intended",
+  "GH 15, KH 10 — harder than optimal",
+  "temperature: 78°F, stable",
+  "temperature: 74°F — the heater disagreed",
+  "temperature: 82°F — the heater lost",
+  "TDS: 180ppm",
+  "TDS: 340ppm — last water change overdue",
+  "TDS: 80ppm — RO/DI, remineralized",
+  "ammonia: 0ppm (as expected)",
+  "ammonia: 0.25ppm (being addressed)",
+  "ammonia: undetectable (the cycle is complete)",
+  "nitrite: 0ppm, nitrate: 10ppm, phosphate: 0.05ppm",
+  "nitrate: 40ppm — 'not ideal but the fish look fine'",
+  "salinity: 1.025 SG, stable",
+  "salinity: 1.026 SG, post top-off correction",
+  "calcium: 420ppm, alkalinity: 8.5 dKH",
+  "O2: 7.8ppm — well-aerated",
+  "dissolved copper: undetectable — reef-safe confirmed",
+  "last water change: 4 days overdue",
+  "last water change: 3 weeks overdue — owner 'monitors the parameters'",
+  "last water change: completed today, 20%",
+  "lights on 8hr photoperiod, blue channel 2hr fade",
+  "lights on 12hr — the timer broke in January",
+  "CO2: 25–30ppm — pressurized, drop checker green",
+  "no CO2 — heavily planted and getting away with it",
+  "filter: canister, last cleaned August. Smelled fine."
+];
+
+// §6 HALLUCINATION overlay texts — 5 fish-themed cryptid-style entries
+const HALLUCINATION_OVERLAY_TEXTS = [
+  "★ UNREGISTERED SPECIMEN ★\nThis entity exists outside known fish taxonomy.\nAcquisition is logged; classification is not.",
+  "CLASSIFICATION SUSPENDED\nSuspected hybrid: parentage unverifiable.\nThe IBC has been notified. No response expected.",
+  "REGISTRY MISMATCH\nUnclassifiable — acquisition refused by two auction houses.\nOne judge described it as 'plausible but inadmissible.'",
+  "NO REGISTRY CROSS-REFERENCE\nThis specimen predates the current classification system.\nRegistry cross-reference returns no matches.",
+  "PATTERN ANOMALY DETECTED\nPattern does not breed true and has never repeated.\nConsidered by some to be a one-generation phenomenon."
+];
+
+// =============================================================================
+// SCIENTIFIC NAME TABLES — §3 of ornamental-fish-v4.md
+// =============================================================================
+
+// GENUS_BY_SPECIES — 60 entries
+// Flowerhorn and Parrotfish are man-made hybrids; using informal placeholder genera
+// per spec recommendation, with a card footnote to keep the format honest
+const GENUS_BY_SPECIES = {
+  "Guppy":                    "Poecilia",
+  "Endler's Livebearer":      "Poecilia",
+  "Molly":                    "Poecilia",
+  "Platy":                    "Xiphophorus",
+  "Swordtail":                "Xiphophorus",
+  "Betta":                    "Betta",
+  "Discus":                   "Symphysodon",
+  "Angelfish":                "Pterophyllum",
+  "Oscar":                    "Astronotus",
+  "Flowerhorn":               "Cichlasomoides",   // informal — hybrid origin
+  "African Cichlid":          "Metriaclima",
+  "Jack Dempsey Cichlid":     "Rocio",
+  "Peacock Cichlid":          "Aulonocara",
+  "Parrotfish":               "Hoplarchus",       // informal — hybrid origin
+  "Convict Cichlid":          "Amatitlania",
+  "Oranda Goldfish":          "Carassius",
+  "Ranchu Goldfish":          "Carassius",
+  "Ryukin Goldfish":          "Carassius",
+  "Telescope Goldfish":       "Carassius",
+  "Bubble Eye Goldfish":      "Carassius",
+  "Pearlscale Goldfish":      "Carassius",
+  "Cardinal Tetra":           "Paracheirodon",
+  "Neon Tetra":               "Paracheirodon",
+  "Rummy-nose Tetra":         "Hemigrammus",
+  "Black Skirt Tetra":        "Gymnocorymbus",
+  "Pleco":                    "Hypostomus",
+  "Bristlenose Pleco":        "Ancistrus",
+  "Corydoras":                "Corydoras",
+  "Otocinclus":               "Otocinclus",
+  "Kuhli Loach":              "Pangio",
+  "Pearl Gourami":            "Trichopodus",
+  "Dwarf Gourami":            "Trichogaster",
+  "Honey Gourami":            "Trichogaster",
+  "Arowana":                  "Osteoglossum",
+  "Koi":                      "Cyprinus",
+  "Axolotl":                  "Ambystoma",
+  "Garra Rufa":               "Garra",
+  "Rope Fish":                "Erpetoichthys",
+  "Elephant Nose Fish":       "Gnathonemus",
+  "African Butterfly Fish":   "Pantodon",
+  "Freshwater Stingray":      "Potamotrygon",
+  "Crystal Red Shrimp":       "Caridina",
+  "Cherry Shrimp":            "Neocaridina",
+  "Amano Shrimp":             "Caridina",
+  "Mystery Snail":            "Pomacea",
+  "Nerite Snail":             "Vittina",
+  "Rabbit Snail":             "Tylomelania",
+  "Clownfish":                "Amphiprion",
+  "Mandarin Dragonet":        "Synchiropus",
+  "Seahorse":                 "Hippocampus",
+  "Firefish Goby":            "Nemateleotris",
+  "Watchman Goby":            "Cryptocentrus",
+  "Clown Goby":               "Gobiodon",
+  "Flasher Wrasse":           "Paracheilinus",
+  "Six-line Wrasse":          "Pseudocheilinus",
+  "Royal Gramma":             "Gramma",
+  "Blue Hippo Tang":          "Paracanthurus",
+  "Yellow Tang":              "Zebrasoma",
+  "Flame Angelfish":          "Centropyge",
+  "Copperband Butterflyfish": "Chelmon"
+};
+
+// VARIANT_EPITHETS — 40 mappings
+const VARIANT_EPITHETS = {
+  "Albino":        "albinica",
+  "Marble":        "marmoratus",
+  "Galaxy":        "galaxiensis",
+  "Piebald":       "piebaldicus",
+  "Koi-pattern":   "koideus",
+  "Mosaic":        "mosaicus",
+  "Panda":         "pandanus",
+  "Snakeskin":     "serpentinus",
+  "Cobra":         "cobriensis",
+  "Tuxedo":        "tuxedensis",
+  "Neon":          "neonicus",
+  "Sunset":        "crepuscularis",
+  "Solar Flare":   "solarflaris",
+  "Black-metallic":"atro-metallicus",
+  "Gold-dust":     "auripulveris",
+  "Platinum":      "platineus",
+  "Champagne":     "bullanticus",
+  "Chocolate":     "chocolatus",
+  "Blue Steel":    "caerulaceus",
+  "Copper":        "cupreus",
+  "Ghost":         "phantomicus",
+  "Phantom":       "spectralis",
+  "Halfmoon":      "lunaris",
+  "Double-tail":   "bifurcatus",
+  "Longfin":       "longipinnis",
+  "Veiltail":      "veliferus",
+  "Crowntail":     "coronalis",
+  "Dragon-scale":  "draconisquamatus",
+  "Dumbo":         "auricularis",
+  "Balloon":       "vesicularis",
+  "Emperor":       "imperatus",
+  "Giant":         "giganticus",
+  "Rosetail":      "roseapinnatus",
+  "Show-grade":    "exhibitionis",
+  "OHM":           "ohmicus",
+  "Metallic":      "metallicus",
+  "Wild-type":     "sylvestris",
+  "Foundation":    "fundatoris",
+  "Back-bred":     "retrogeneticus",
+  "Tri-color":     "tricoloris"
+};
+
+// Hybrid species that need a footnote on their card
+const HYBRID_SPECIES = new Set(["Flowerhorn", "Parrotfish"]);
+
+// Phonetic fallback for species not in GENUS_BY_SPECIES
+function latinizeGenus(word) {
+  const base = word.replace(/[^a-zA-Z]/g, '').slice(0, 10);
+  return base.charAt(0).toUpperCase() + base.slice(1).toLowerCase() + 'us';
+}
+
+// generateScientificName — binomial (2-word), per §3
+function generateScientificName(species, primaryVariant) {
+  const genus = GENUS_BY_SPECIES[species] ?? latinizeGenus(species);
+  let epithet = VARIANT_EPITHETS[primaryVariant];
+  if (!epithet) {
+    const base = primaryVariant.split(' ')[0].toLowerCase().replace(/[^a-z]/g, '');
+    epithet = base.match(/[aeiou]$/) ? base + 'ensis' : base + 'icus';
+  }
+  return `${genus} ${epithet}`;
+}
+
+// =============================================================================
+// RARITY — weights 43/28/18/8/3, fish-tier labels per §7
+// =============================================================================
+const RARITIES = [
+  {tier: "common",        weight: 43, label: "CLASS I — Common Tank Stock",        mintSize: 10000, rarityBase: 43},
+  {tier: "uncommon",      weight: 28, label: "CLASS II — Show-Quality Specimen",   mintSize: 3000,  rarityBase: 28},
+  {tier: "rare",          weight: 18, label: "CLASS III — Regional Champion Line", mintSize: 500,   rarityBase: 18},
+  {tier: "legendary",     weight: 8,  label: "CLASS IV — Heritage Breeding Line",  mintSize: 100,   rarityBase: 8},
+  {tier: "hallucination", weight: 3,  label: "★ UNCLASSIFIABLE ★ — Unregistered Specimen", mintSize: null, rarityBase: 3}
+];
+const BASE_RATES = {common:0.43, uncommon:0.28, rare:0.18, legendary:0.08, hallucination:0.03};
+
+// =============================================================================
+// PITY SYSTEM — unchanged from v3
+// =============================================================================
+const pityState = {
+  sinceLastSeen: { common:0, uncommon:0, rare:0, legendary:0, hallucination:0 },
+  totalPresses: 0
+};
+
+function getSoftPityBonus(tier, sinceLastSeen) {
+  const thresholds = {
+    rare:          {soft:20, hard:40, baseRate:0.18},
+    legendary:     {soft:35, hard:70, baseRate:0.08},
+    hallucination: {soft:50, hard:100, baseRate:0.03}
+  };
+  const t = thresholds[tier];
+  if (!t || sinceLastSeen < t.soft) return 0;
+  const progress = (sinceLastSeen - t.soft) / (t.hard - t.soft);
+  const maxBonus = 1 - t.baseRate;
+  return Math.min(progress * maxBonus, maxBonus);
+}
+
+const TIER_ORDER = ['hallucination','legendary','rare','uncommon','common'];
+
+function rollWithPity(nightBoost) {
+  const halluBoost = nightBoost ? 1.5 : 1.0;
+  const adjustedRates = {...BASE_RATES, hallucination: Math.min(BASE_RATES.hallucination * halluBoost, 0.08)};
+
+  const roll = Math.random();
+  let accumulated = 0;
+  for (const tier of TIER_ORDER) {
+    const base  = adjustedRates[tier];
+    const bonus = getSoftPityBonus(tier, pityState.sinceLastSeen[tier]);
+    const effective = Math.min(base + bonus, 1.0);
+    accumulated += effective;
+    if (roll < accumulated) {
+      resetPityCounters(tier);
+      incrementPityCounters(tier);
+      return RARITIES.find(r => r.tier === tier);
+    }
+  }
+  resetPityCounters('common');
+  incrementPityCounters('common');
+  return RARITIES[0];
+}
+
+function resetPityCounters(tier) {
+  const idx = ['common','uncommon','rare','legendary','hallucination'].indexOf(tier);
+  for (let i = 0; i <= idx; i++) {
+    pityState.sinceLastSeen[['common','uncommon','rare','legendary','hallucination'][i]] = 0;
+  }
+}
+
+function incrementPityCounters(rolledTier) {
+  const order = ['common','uncommon','rare','legendary','hallucination'];
+  const rolledIdx = order.indexOf(rolledTier);
+  for (let i = rolledIdx + 1; i < order.length; i++) {
+    pityState.sinceLastSeen[order[i]]++;
+  }
+  pityState.totalPresses++;
+}
+
+// =============================================================================
+// NFT CARD DATA — §4
+// =============================================================================
+const editionCounts = new Map();
+
+function getFishSignature(species, traits) {
+  return [species, ...[...traits].sort()].join('|');
+}
+
+function getEditionNumber(signature) {
+  const n = (editionCounts.get(signature) ?? 0) + 1;
+  editionCounts.set(signature, n);
+  return n;
+}
+
+function getMintDisplay(rarityTier, mintSize) {
+  if (rarityTier === 'hallucination') {
+    return Math.random() < 0.5 ? '1 of 1' : '/ 12';
+  }
+  return `/ ${mintSize.toLocaleString()}`;
+}
+
+// Small deterministic hash for SPECIMEN-# ID
+function generateHashId(species, traits, catchOrigin) {
+  const raw = [species, ...traits, catchOrigin].join('_');
+  let h = 0;
+  for (let i = 0; i < raw.length; i++) h = (h * 31 + raw.charCodeAt(i)) >>> 0;
+  const hex = h.toString(16).toUpperCase().padStart(8, '0');
+  return `SPECIMEN-#${hex.slice(0,5)}-${hex.slice(5,7)}`;
+}
+
+function buildCardData(species, traits, rarity, catchOrigin) {
+  const signature  = getFishSignature(species, traits);
+  const editionNum = getEditionNumber(signature);
+  const mintDisp   = getMintDisplay(rarity.tier, rarity.mintSize);
+  const editionStr = rarity.tier === 'hallucination' && mintDisp === '1 of 1'
+    ? `#0001 / 1 of 1`
+    : `#${String(editionNum).padStart(4,'0')} ${mintDisp}`;
+  const hashId     = generateHashId(species, traits, catchOrigin);
+  const rarityDisp = (rarity.rarityBase + (Math.random() * 0.2 - 0.1)).toFixed(1);
+  return { editionStr, hashId, rarityDisp };
+}
+
+// =============================================================================
+// NAME GENERATION — §2 generateDisplayName()
+// =============================================================================
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+function generateDisplayName() {
+  const speciesName = pick(SPECIES);
+
+  // Determine trait count: 60% / 30% / 8% / 2%
+  const r = Math.random();
+  let traitCount;
+  if      (r < 0.60) traitCount = 1;
+  else if (r < 0.90) traitCount = 2;
+  else if (r < 0.98) traitCount = 3;
+  else               traitCount = 4;
+
+  // Pick unique traits (shuffle, then slice)
+  const shuffled = [...VARIANT_TRAITS].sort(() => Math.random() - 0.5);
+  const chosenTraits = shuffled.slice(0, traitCount);
+
+  // Maybe add lineage suffix (15% chance)
+  const lineageSuffix = Math.random() < 0.15 ? `, ${pick(LINEAGES)}` : '';
+
+  const display = `${chosenTraits.join(' ')} ${speciesName}${lineageSuffix}`;
+
+  return {
+    display,
+    species:      speciesName,
+    traits:       chosenTraits,
+    primaryTrait: chosenTraits[0],
+    lineage:      lineageSuffix ? lineageSuffix.replace(', ', '') : null
+  };
+}
+
+// =============================================================================
+// SLOT COLLECTION — fish-specific
+// =============================================================================
+function collectSlots() {
+  return {
+    habitat:       pick(HABITATS),
+    food:          pick(FOODS),
+    behavior:      pick(BEHAVIORS),
+    traitLore:     pick(TRAIT_LORE),
+    weakness:      Math.random() < 0.70 ? pick(WEAKNESSES)    : null,
+    catchOrigin:   pick(CATCH_ORIGINS),
+    tankCondition: Math.random() < 0.60 ? pick(TANK_CONDITIONS) : null
+  };
+}
+
+// =============================================================================
+// TONE FUNCTIONS — §5: 2 tones only
+// =============================================================================
+
+// Tone 1: Breeder Spec Sheet — dry, hobby-forum voice
+function descBreederSpec(name, scientificName, slots, card) {
+  const tierLabel = RARITIES.find(r => r.tier === currentRarityTier)?.label ?? '';
+  let lines = [
+    `${name} (${scientificName})`,
+    `Tier: ${tierLabel} | Edition ${card.editionStr} | Rarity: ${card.rarityDisp}%`,
+    ``,
+    `Observed in ${slots.habitat}.`,
+    `Diet: ${slots.food}.`,
+    ``,
+    `Behavioral note: ${slots.behavior}`,
+    ``,
+    `Collector lore: ${slots.traitLore}`
+  ];
+  if (slots.weakness) lines.push(`Known sensitivity: ${slots.weakness}`);
+  lines.push(``, `Origin: ${slots.catchOrigin}`);
+  if (slots.tankCondition) lines.push(`Tank conditions at acquisition: ${slots.tankCondition}`);
+  return lines.join('\n');
+}
+
+// Tone 2: Auction Listing — calibrated enthusiasm, marketplace voice
+function descAuction(name, scientificName, slots, card, traits) {
+  const traitLine = traits.join(' · ');
+  let lines = [
+    `${name}`,
+    `${scientificName} · Edition ${card.editionStr}`,
+    ``,
+    `Rarity: ${card.rarityDisp}% — a genuinely uncommon encounter.`,
+    ``,
+    `This specimen was collected from ${slots.habitat} and presents in exceptional condition. Primary diet: ${slots.food}. Behavioral profile: ${slots.behavior}`,
+    ``,
+    `Trait highlights: ${traitLine}`,
+    ``,
+    `Lore: ${slots.traitLore}`,
+    `Provenance: ${slots.catchOrigin}`
+  ];
+  if (slots.weakness) lines.push(``, `Known sensitivity: ${slots.weakness}`);
+  if (slots.tankCondition) lines.push(``, `Starting conditions logged: ${slots.tankCondition}`);
+  lines.push(``, `Serious inquiries welcome. This listing reflects a verified specimen.`);
+  return lines.join('\n');
+}
+
+// Per-rarity tone weights — §5
+// Auction probability: CLASS I/II: 30%, CLASS III/IV: 50%, UNCLASSIFIABLE: 70%
+const TONE_AUCTION_CHANCE = {
+  common: 0.30, uncommon: 0.30, rare: 0.50, legendary: 0.50, hallucination: 0.70
+};
+const TONE_LABELS = { breeder: "Breeder Spec", auction: "Auction" };
+
+let currentRarityTier = 'common'; // set before tone fn call
+
+function pickTone(rarityTier) {
+  const chance = TONE_AUCTION_CHANCE[rarityTier] ?? 0.40;
+  return Math.random() < chance ? 'auction' : 'breeder';
+}
+
+// =============================================================================
+// MAIN GENERATE
+// =============================================================================
+function generate() {
+  const nameObj   = generateDisplayName();
+  const rarity    = rollWithPity(currentPhase === 'night');
+  currentRarityTier = rarity.tier;
+  const tone      = pickTone(rarity.tier);
+  const slots     = collectSlots();
+  const sciName   = generateScientificName(nameObj.species, nameObj.primaryTrait);
+  const cardData  = buildCardData(nameObj.species, nameObj.traits, rarity, slots.catchOrigin);
+  const isHybrid  = HYBRID_SPECIES.has(nameObj.species);
+
+  let desc;
+  if (tone === 'auction') {
+    desc = descAuction(nameObj.display, sciName, slots, cardData, nameObj.traits);
+  } else {
+    desc = descBreederSpec(nameObj.display, sciName, slots, cardData);
+  }
+  if (isHybrid) {
+    desc += '\n\n*hybrid origin — genus designation informal';
+  }
+
+  const sprite = pick(SPRITES);
+  return {
+    name:      nameObj.display,
+    species:   nameObj.species,
+    traits:    nameObj.traits,
+    desc,
+    sprite,
+    rarity,
+    tone,
+    habitat:   slots.habitat,
+    sciName,
+    cardData,
+    isHybrid,
+    slots
+  };
+}
+
+// =============================================================================
+// SPRITES — aquatic/nature themed
+// =============================================================================
+const SPRITES = [
+  "🐠","🐡","🐟","🦈","🐬","🐳","🦭","🦑","🐙","🦐","🦞","🦀","🐚","🪸","🐊",
+  "🐢","🦋","🐸","🦆","🐧","🪼","🐋","🦭","🐡","🐠","🐟","🦑","🐙","🦐","🐚",
+  "🪸","🦈","🐬","🐳","🦞","🦀","🌊","💧","🫧","🪨","🌿","🪴","🍃","🫙","🏺"
+];
+
+// =============================================================================
+// DAY/NIGHT CYCLE — unchanged from v3
+// =============================================================================
+const CYCLE_DURATION = 60000; // 60s real-time cycle
+let sessionStartTime = Date.now();
+let currentPhase = 'day';
+
+const PHASE_LABELS = {
+  dawn:  '🌅 Dawn',
+  day:   '☀️ Day',
+  dusk:  '🌆 Dusk',
+  night: '🌙 Night'
+};
+
+function getPhase() {
+  const elapsed = (Date.now() - sessionStartTime) % CYCLE_DURATION;
+  const pct = elapsed / CYCLE_DURATION;
+  if (pct < 0.15) return 'dawn';
+  if (pct < 0.55) return 'day';
+  if (pct < 0.70) return 'dusk';
+  return 'night';
+}
+
+function updatePhase() {
+  const phase = getPhase();
+  if (phase !== currentPhase) {
+    currentPhase = phase;
+    document.body.className = `phase-${phase}`;
+    const badge = document.getElementById('phaseBadge');
+    if (badge) badge.textContent = PHASE_LABELS[phase];
+  }
+}
+
+// =============================================================================
+// AUTO-SPAWN TIMER — unchanged from v3
+// Onboarding: first 10 min or first 10 fish → 20–30s
+// Steady state: 60–90s
+// =============================================================================
+const ONBOARDING_DURATION        = 10 * 60 * 1000;
+const ONBOARDING_FISH_THRESHOLD  = 10;
+const SPAWN_INTERVAL_ONBOARD     = () => 20000 + Math.random() * 10000;
+const SPAWN_INTERVAL_STEADY      = () => 60000 + Math.random() * 30000;
+
+let spawnTimer = null;
+let nextSpawnAt = 0;
+let wasHidden = false;
+
+function isOnboarding() {
+  return (Date.now() - sessionStartTime < ONBOARDING_DURATION) &&
+         (pityState.totalPresses < ONBOARDING_FISH_THRESHOLD);
+}
+
+function scheduleNextSpawn() {
+  const delay = isOnboarding() ? SPAWN_INTERVAL_ONBOARD() : SPAWN_INTERVAL_STEADY();
+  nextSpawnAt = Date.now() + delay;
+  clearTimeout(spawnTimer);
+  spawnTimer = setTimeout(() => {
+    if (wasHidden) {
+      wasHidden = false;
+      scheduleNextSpawn();
+      return;
+    }
+    spawnCreature();
+    scheduleNextSpawn();
+  }, delay);
+  updateSpawnStatus();
+}
+
+function updateSpawnStatus() {
+  const el = document.getElementById('spawnStatus');
+  if (!el) return;
+  const remaining = Math.max(0, Math.round((nextSpawnAt - Date.now()) / 1000));
+  el.textContent = `Next specimen: ${remaining}s`;
+}
+
+setInterval(() => {
+  updateSpawnStatus();
+  updatePhase();
+}, 1000);
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    wasHidden = true;
+    clearTimeout(spawnTimer);
+  } else {
+    scheduleNextSpawn();
+  }
+});
+
+function manualSpawn() {
+  spawnCreature();
+  scheduleNextSpawn();
+}
+
+// =============================================================================
+// AQUARIUM FISH SPRITES — RAF animation loop (unchanged from v3)
+// =============================================================================
+let fishOnScreen  = [];   // max 20
+let allCreatures  = [];   // unbounded dex
+let fishIdCounter = 0;
+let pinnedFishId  = null;
+let lastFrameTime = 0;
+
+function createFishSprite(creature) {
+  const aquarium = document.getElementById('aquarium');
+  const aqW = aquarium.offsetWidth;
+  const aqH = aquarium.offsetHeight;
+
+  const el = document.createElement('div');
+  el.className = 'fish-sprite spawning';
+  el.textContent = creature.sprite;
+
+  const fromLeft = Math.random() < 0.5;
+  const startX   = fromLeft ? -30 : aqW + 10;
+  const startY   = 15 + Math.random() * (aqH - 50);
+  const baseVx   = (fromLeft ? 1 : -1) * (0.3 + Math.random() * 0.7);
+
+  const id        = ++fishIdCounter;
+  const bobPhase  = Math.random() * Math.PI * 2;
+  const bobAmp    = 4 + Math.random() * 4;
+  const bobPeriod = 2000 + Math.random() * 2000;
+
+  el.style.left    = `${startX}px`;
+  el.style.top     = `${startY}px`;
+  el.dataset.id    = id;
+
+  el.addEventListener('mouseenter', (e) => showFishTooltip(e, creature, el));
+  el.addEventListener('mouseleave', hideFishTooltip);
+  el.addEventListener('click', () => pinFish(id));
+
+  aquarium.appendChild(el);
+  setTimeout(() => el.classList.remove('spawning'), 600);
+
+  return { el, x: startX, y: startY, vx: baseVx, vy: 0, bobPhase, bobAmp, bobPeriod, creature, id, spawnTime: Date.now(), driftSpeed: 1.0 };
+}
+
+function removeFishSprite(fish, immediate) {
+  if (pinnedFishId === fish.id) unpinFish();
+  fish.el.classList.add('exiting');
+  const delay = immediate ? 0 : 800;
+  setTimeout(() => {
+    if (fish.el.parentNode) fish.el.parentNode.removeChild(fish.el);
+  }, delay);
+}
+
+// RAF drift + bob loop
+function animateFish(timestamp) {
+  const dt       = timestamp - lastFrameTime;
+  lastFrameTime  = timestamp;
+  const aquarium = document.getElementById('aquarium');
+  const aqW      = aquarium ? aquarium.offsetWidth  : 672;
+  const aqH      = aquarium ? aquarium.offsetHeight : 180;
+
+  for (let i = fishOnScreen.length - 1; i >= 0; i--) {
+    const fish = fishOnScreen[i];
+    fish.x += fish.vx * fish.driftSpeed;
+    fish.bobPhase += (2 * Math.PI * dt) / fish.bobPeriod;
+    const bobOffset = Math.sin(fish.bobPhase) * fish.bobAmp;
+
+    fish.el.style.left = `${fish.x}px`;
+    fish.el.style.top  = `${fish.y + bobOffset}px`;
+
+    if (fish.x > aqW + 60 || fish.x < -60) {
+      fishOnScreen.splice(i, 1);
+      removeFishSprite(fish, true);
+    }
+  }
+
+  // Gradually recover drift speed after hallucination recoil
+  for (const fish of fishOnScreen) {
+    if (fish.driftSpeed < 1.0) {
+      fish.driftSpeed = Math.min(1.0, fish.driftSpeed + 0.002 * dt / 16.67);
+    }
+  }
+
+  requestAnimationFrame(animateFish);
+}
+requestAnimationFrame((ts) => { lastFrameTime = ts; animateFish(ts); });
+
+// =============================================================================
+// FISH TOOLTIP
+// =============================================================================
+let tooltipEl = null;
+
+function showFishTooltip(e, creature, fishEl) {
+  hideFishTooltip();
+  const aquarium = document.getElementById('aquarium');
+  tooltipEl = document.createElement('div');
+  tooltipEl.className = 'fish-tooltip';
+  tooltipEl.innerHTML = `
+    <div class="ft-name">${creature.sprite} ${creature.name.replace(/</g,'&lt;')}</div>
+    <div class="ft-sci">${creature.sciName}</div>
+    <div class="ft-rarity"><span class="tag ${creature.rarity.tier}">${creature.rarity.label}</span></div>
+  `;
+  const aqRect  = aquarium.getBoundingClientRect();
+  const fishRect = fishEl.getBoundingClientRect();
+  let tipX = fishRect.left - aqRect.left + 20;
+  let tipY = fishRect.top  - aqRect.top  - 60;
+  tipX = Math.max(4, Math.min(tipX, aquarium.offsetWidth - 230));
+  tipY = Math.max(4, tipY);
+  tooltipEl.style.left = `${tipX}px`;
+  tooltipEl.style.top  = `${tipY}px`;
+  aquarium.appendChild(tooltipEl);
+}
+
+function hideFishTooltip() {
+  if (tooltipEl && tooltipEl.parentNode) tooltipEl.parentNode.removeChild(tooltipEl);
+  tooltipEl = null;
+}
+
+// =============================================================================
+// FISH PIN / UNPIN
+// =============================================================================
+function pinFish(id) {
+  unpinFish();
+  const fish = fishOnScreen.find(f => f.id === id);
+  if (!fish) return;
+  pinnedFishId = id;
+  fish.el.classList.add('pinned');
+  const c = fish.creature;
+  document.getElementById('pcSprite').textContent = c.sprite;
+  document.getElementById('pcName').textContent   = c.name;
+  document.getElementById('pcSci').textContent    = c.sciName;
+  document.getElementById('pcDesc').textContent   = c.desc;
+  const tagEl = document.getElementById('pcTag');
+  tagEl.className  = `tag ${c.rarity.tier}`;
+  tagEl.textContent = c.rarity.label;
+  document.getElementById('pinned-card').style.display = 'block';
+  hideFishTooltip();
+}
+
+function unpinFish() {
+  if (pinnedFishId !== null) {
+    const fish = fishOnScreen.find(f => f.id === pinnedFishId);
+    if (fish) fish.el.classList.remove('pinned');
+    pinnedFishId = null;
+  }
+  document.getElementById('pinned-card').style.display = 'none';
+}
+
+// =============================================================================
+// HALLUCINATION RECOIL — all other fish react when a hallucination spawns
+// =============================================================================
+function triggerHallucinationRecoil() {
+  for (const fish of fishOnScreen) {
+    if (fish.creature.rarity.tier !== 'hallucination') {
+      fish.el.classList.remove('recoiling');
+      void fish.el.offsetWidth;
+      fish.el.classList.add('recoiling');
+      setTimeout(() => fish.el.classList.remove('recoiling'), 400);
+      fish.driftSpeed = 0.5;
+    }
+  }
+}
+
+// =============================================================================
+// SPAWN CREATURE
+// =============================================================================
+function spawnCreature() {
+  const emptyHint = document.getElementById('aquariumEmptyHint');
+  if (emptyHint) emptyHint.style.display = 'none';
+
+  const c = generate();
+  allCreatures.push(c);
+
+  // 20-fish cap: remove oldest when exceeded
+  if (fishOnScreen.length >= 20) {
+    const oldest = fishOnScreen.shift();
+    removeFishSprite(oldest, false);
+  }
+
+  const fish = createFishSprite(c);
+  fishOnScreen.push(fish);
+
+  if (c.rarity.tier === 'hallucination') {
+    setTimeout(() => triggerHallucinationRecoil(), 300);
+    showTierOverlay(c);
+  }
+
+  const list = document.getElementById('list');
+  if (list) {
+    const el = renderCreature(c);
+    list.prepend(el);
+    const header = document.getElementById('dexListHeader');
+    if (header) header.style.display = 'block';
+  }
+
+  tierCount[c.rarity.tier]++;
+  checkMilestones(c);
+  updateCounter();
+  updateDex(c);
+}
+
+// =============================================================================
+// TIER OVERLAY (UNCLASSIFIABLE announce)
+// =============================================================================
+function showTierOverlay(creature) {
+  const overlay = document.getElementById('tier-overlay');
+  document.getElementById('overlayEmoji').textContent = creature.sprite;
+
+  const tier = creature.rarity.tier;
+  let titleText, subtitleText;
+
+  if (tier === 'hallucination') {
+    const raw    = pick(HALLUCINATION_OVERLAY_TEXTS).split('\n');
+    titleText    = raw[0] ?? '★ UNREGISTERED SPECIMEN ★';
+    subtitleText = (raw[1] ?? '') + (raw[2] ? '\n' + raw[2] : '');
+  } else if (tier === 'legendary') {
+    titleText    = 'CLASS IV SPECIMEN VERIFIED';
+    subtitleText = 'Heritage Breeding Line. Formal provenance withheld pending review.';
+  } else if (tier === 'rare') {
+    titleText    = 'CLASS III SPECIMEN CONFIRMED';
+    subtitleText = 'Regional Champion Line. Log entry preserved.';
+  } else if (tier === 'uncommon') {
+    titleText    = 'CLASS II SPECIMEN LOGGED';
+    subtitleText = creature.name;
+  } else {
+    titleText    = 'NEW SPECIMEN ADMITTED';
+    subtitleText = creature.name;
+  }
+
+  document.getElementById('overlayTitle').textContent    = titleText;
+  document.getElementById('overlaySubtitle').textContent = subtitleText;
+  overlay.classList.add('active');
+  setTimeout(() => overlay.classList.remove('active'), 2800);
+}
+
+// =============================================================================
+// RENDER CREATURE CARD — §4 NFT card UI integrated
+// =============================================================================
+function renderCreature(c) {
+  const el     = document.createElement('div');
+  el.className = `creature ${c.rarity.tier}`;
+
+  const safeName = c.name.replace(/</g,'&lt;');
+  const safeDesc = c.desc.replace(/</g,'&lt;');
+  const safeSci  = c.sciName.replace(/</g,'&lt;');
+
+  // Classification label: 20% chance on any card
+  const classLabel = Math.random() < 0.20 ? pick(CLASSIFICATIONS) : null;
+
+  // Trait chips — from nameObj.traits
+  const chipsHtml = c.traits.map(t =>
+    `<span class="trait-chip">${t.replace(/</g,'&lt;')}</span>`
+  ).join('');
+
+  // Hybrid footnote in sci-name line
+  const hybridNote = c.isHybrid
+    ? ` <span style="font-size:10px;color:#9a8a7a;font-style:normal">*hybrid origin — genus informal</span>`
+    : '';
+
+  el.innerHTML = `
+    <div class="sprite">${c.sprite}</div>
+    <div class="info">
+      <div class="card-meta-row">
+        <span class="card-edition">Edition ${c.cardData.editionStr}</span>
+        <span class="card-hash">${c.cardData.hashId}</span>
+        <span class="card-rarity-pct">Rarity: ${c.cardData.rarityDisp}%</span>
+      </div>
+      <div class="name">
+        <span class="tag ${c.rarity.tier}">${c.rarity.label}</span>
+        <span class="tone-badge">${TONE_LABELS[c.tone]}</span>${safeName}
+      </div>
+      ${classLabel ? `<div class="sci-name" style="color:#7a6a5a;font-style:normal">${classLabel}</div>` : ''}
+      <div class="sci-name"><em>${safeSci}</em>${hybridNote}</div>
+      <div class="trait-chips">${chipsHtml}</div>
+      <div class="desc">${safeDesc}</div>
+      <div class="card-provenance">Origin: ${c.slots.catchOrigin}</div>
+    </div>
+  `;
+  return el;
+}
+
+// =============================================================================
+// DEX PANEL — v4 axes: species, variant traits, habitats
+// =============================================================================
+const dexSets = { species: new Set(), traits: new Set(), habitat: new Set() };
+
+function updateDex(c) {
+  const total = Object.values(tierCount).reduce((a,b) => a+b, 0);
+  document.getElementById('statTotal').textContent         = total;
+  document.getElementById('statCommon').textContent        = tierCount.common;
+  document.getElementById('statUncommon').textContent      = tierCount.uncommon;
+  document.getElementById('statRare').textContent          = tierCount.rare;
+  document.getElementById('statLegendary').textContent     = tierCount.legendary;
+  document.getElementById('statHallucination').textContent = tierCount.hallucination;
+
+  // Species axis
+  if (c.species && !dexSets.species.has(c.species)) {
+    dexSets.species.add(c.species);
+    const items = document.getElementById('dexSpeciesItems');
+    const tag   = document.createElement('span');
+    tag.className   = 'dex-item';
+    tag.textContent = c.species;
+    items.appendChild(tag);
+    document.getElementById('dexSpeciesCount').textContent = dexSets.species.size;
+  }
+
+  // Variant traits axis — add any new trait from this specimen
+  if (c.traits) {
+    for (const trait of c.traits) {
+      if (!dexSets.traits.has(trait)) {
+        dexSets.traits.add(trait);
+        const items = document.getElementById('dexTraitItems');
+        const tag   = document.createElement('span');
+        tag.className   = 'dex-item';
+        tag.textContent = trait;
+        items.appendChild(tag);
+        document.getElementById('dexTraitCount').textContent = dexSets.traits.size;
+      }
+    }
+  }
+
+  // Habitat axis
+  if (c.habitat && !dexSets.habitat.has(c.habitat)) {
+    dexSets.habitat.add(c.habitat);
+    const items = document.getElementById('dexHabitatItems');
+    const tag   = document.createElement('span');
+    tag.className   = 'dex-item';
+    tag.textContent = c.habitat;
+    items.appendChild(tag);
+    document.getElementById('dexHabitatCount').textContent = dexSets.habitat.size;
+  }
+}
+
+// =============================================================================
+// MILESTONE SYSTEM — §6 fish-hobby-voice toasts
+// =============================================================================
+const milestones = {
+  first_rare:          false,
+  first_legendary:     false,
+  first_hallucination: false,
+  five_creatures:      false,
+  ten_creatures:       false,
+  twenty_creatures:    false,
+  thirty_creatures:    false,
+  fifty_creatures:     false,
+  habitat_10:          false,
+  habitat_25:          false,
+  lore_25:             false,
+  all_tiers_seen:      false
+};
+
+const msState = {
+  tiersSeen:     new Set(),
+  loreSeen:      new Set(),
+  habitatStreak: 0,
+  lastHabitat:   null,
+  commonStreak:  0,
+  recentRare:    []
+};
+
+const milestoneCooldowns = {
+  common_streak_8: 0,
+  rare_burst:      0
+};
+
+let toastQueue  = [];
+let toastActive = false;
+
+function showToast(message) {
+  toastQueue.push(message);
+  if (!toastActive) processToastQueue();
+}
+
+function processToastQueue() {
+  if (toastQueue.length === 0) { toastActive = false; return; }
+  toastActive = true;
+  const msg   = toastQueue.shift();
+  const toast = document.createElement('div');
+  toast.className   = 'milestone-toast';
+  toast.textContent = msg;
+  document.body.appendChild(toast);
+  setTimeout(() => { toast.remove(); processToastQueue(); }, 3100);
+}
+
+function checkMilestones(creature) {
+  const tier  = creature.rarity.tier;
+  const fired = [];
+
+  msState.tiersSeen.add(tier);
+  if (creature.slots && creature.slots.traitLore) {
+    msState.loreSeen.add(creature.slots.traitLore);
+  }
+  if (creature.habitat === msState.lastHabitat) {
+    msState.habitatStreak++;
+  } else {
+    msState.habitatStreak = 1;
+    msState.lastHabitat   = creature.habitat;
+  }
+  if (tier === 'common') { msState.commonStreak++; }
+  else                   { msState.commonStreak = 0; }
+  msState.recentRare.push(tier === 'rare' ? 1 : 0);
+  if (msState.recentRare.length > 5) msState.recentRare.shift();
+  const rareInLast5 = msState.recentRare.reduce((a,b) => a+b, 0);
+
+  Object.keys(milestoneCooldowns).forEach(k => { if (milestoneCooldowns[k] > 0) milestoneCooldowns[k]--; });
+
+  // Rarity firsts
+  if (!milestones.first_rare && tier === 'rare') {
+    milestones.first_rare = true;
+    fired.push("First Regional Champion Line specimen. Worth noting.");
+  }
+  if (!milestones.first_legendary && tier === 'legendary') {
+    milestones.first_legendary = true;
+    fired.push("First Heritage Breeding Line. The lineage has been verified.");
+  }
+  if (!milestones.first_hallucination && tier === 'hallucination') {
+    milestones.first_hallucination = true;
+    fired.push("★ Unregistered Specimen admitted. Two auction houses have declined to classify this. ★");
+  }
+
+  // Collection count milestones
+  if (!milestones.five_creatures && pityState.totalPresses >= 5) {
+    milestones.five_creatures = true;
+    fired.push("5 specimens on record. The tank is showing personality.");
+  }
+  if (!milestones.ten_creatures && pityState.totalPresses >= 10) {
+    milestones.ten_creatures = true;
+    fired.push("10 cataloged. A modest but earnest collection.");
+  }
+  if (!milestones.twenty_creatures && pityState.totalPresses >= 20) {
+    milestones.twenty_creatures = true;
+    fired.push("20 specimens. You are operating a fishroom, not a hobby.");
+  }
+  if (!milestones.thirty_creatures && pityState.totalPresses >= 30) {
+    milestones.thirty_creatures = true;
+    fired.push("30 on record. At this volume, a sump is recommended.");
+  }
+  if (!milestones.fifty_creatures && pityState.totalPresses >= 50) {
+    milestones.fifty_creatures = true;
+    fired.push("50 cataloged. The registry is beginning to take shape.");
+  }
+
+  // Habitat milestones
+  if (!milestones.habitat_10 && dexSets.habitat.size >= 10) {
+    milestones.habitat_10 = true;
+    fired.push("10 habitats on record. The biotope range is broadening.");
+  }
+  if (!milestones.habitat_25 && dexSets.habitat.size >= 25) {
+    milestones.habitat_25 = true;
+    fired.push("25 habitat sites logged. Cross-reference with your water report.");
+  }
+
+  // Lore milestone
+  if (!milestones.lore_25 && msState.loreSeen.size >= 25) {
+    milestones.lore_25 = true;
+    fired.push("25 lore entries cataloged. The registry is getting interesting.");
+  }
+
+  // All tiers seen (CLASS I–IV; UNCLASSIFIABLE cataloged separately)
+  if (!milestones.all_tiers_seen &&
+      msState.tiersSeen.has('common') && msState.tiersSeen.has('uncommon') &&
+      msState.tiersSeen.has('rare')   && msState.tiersSeen.has('legendary')) {
+    milestones.all_tiers_seen = true;
+    fired.push("CLASS I through CLASS IV on record. ★ UNCLASSIFIABLE ★ is cataloged separately.");
+  }
+
+  // Common streak
+  if (milestoneCooldowns.common_streak_8 === 0 && msState.commonStreak >= 8) {
+    milestoneCooldowns.common_streak_8 = 10;
+    fired.push("8 consecutive CLASS I specimens. Biodiversity index: declining.");
+  }
+
+  // Rare burst
+  if (milestoneCooldowns.rare_burst === 0 && rareInLast5 >= 2) {
+    milestoneCooldowns.rare_burst = 10;
+    fired.push("Elevated CLASS III activity detected. Cause: unknown.");
+  }
+
+  fired.forEach(showToast);
+}
+
+// =============================================================================
+// COUNTER
+// =============================================================================
+const tierCount = {common:0, uncommon:0, rare:0, legendary:0, hallucination:0};
+
+function updateCounter() {
+  const total   = Object.values(tierCount).reduce((a,b) => a+b, 0);
+  const counter = document.getElementById('counter');
+  if (counter) counter.textContent =
+    `Catalog: ${total} specimens — CLASS I ${tierCount.common} · CLASS II ${tierCount.uncommon} · CLASS III ${tierCount.rare} · CLASS IV ${tierCount.legendary} · ★ ${tierCount.hallucination}`;
+}
+
+// =============================================================================
+// RESET
+// =============================================================================
+function resetAll() {
+  for (const fish of fishOnScreen) {
+    if (fish.el.parentNode) fish.el.parentNode.removeChild(fish.el);
+  }
+  fishOnScreen  = [];
+  allCreatures  = [];
+  pinnedFishId  = null;
+  unpinFish();
+
+  document.getElementById('list').innerHTML = '';
+  document.getElementById('dexListHeader').style.display = 'none';
+  document.getElementById('aquariumEmptyHint').style.display = '';
+
+  Object.keys(tierCount).forEach(k => tierCount[k] = 0);
+  Object.keys(pityState.sinceLastSeen).forEach(k => pityState.sinceLastSeen[k] = 0);
+  pityState.totalPresses = 0;
+
+  Object.keys(milestones).forEach(k => milestones[k] = false);
+  Object.keys(milestoneCooldowns).forEach(k => milestoneCooldowns[k] = 0);
+  msState.tiersSeen.clear();
+  msState.loreSeen.clear();
+  msState.habitatStreak = 0;
+  msState.lastHabitat   = null;
+  msState.commonStreak  = 0;
+  msState.recentRare    = [];
+
+  editionCounts.clear();
+
+  Object.values(dexSets).forEach(s => s.clear());
+  document.getElementById('dexSpeciesItems').innerHTML = '';
+  document.getElementById('dexTraitItems').innerHTML   = '';
+  document.getElementById('dexHabitatItems').innerHTML = '';
+  document.getElementById('dexSpeciesCount').textContent = '0';
+  document.getElementById('dexTraitCount').textContent   = '0';
+  document.getElementById('dexHabitatCount').textContent = '0';
+
+  ['statTotal','statCommon','statUncommon','statRare','statLegendary','statHallucination']
+    .forEach(id => document.getElementById(id).textContent = '0');
+
+  updateCounter();
+  sessionStartTime = Date.now();
+  scheduleNextSpawn();
+}
+
+// =============================================================================
+// INIT — first spawn after 1.5s welcome delay, then start auto-spawn
+// =============================================================================
+setTimeout(() => {
+  spawnCreature();
+  scheduleNextSpawn();
+}, 1500);
+</script>
+
+</body>
+</html>
