@@ -23,6 +23,14 @@ dist/
 build/
 out/
 
+# Rust / Bevy
+target/
+**/target/
+*.rs.bk
+
+# Claude worktrees
+.claude/worktrees/
+
 # Env / secrets
 .env
 .env.local

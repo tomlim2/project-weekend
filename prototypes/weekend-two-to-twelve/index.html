@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Weekend 2-to-the-12</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0; overflow: hidden;
+      background: #1a1c2c;
+      font-family: monospace;
+      color: #f4f4f4;
+    }
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+    #hud {
+      position: fixed;
+      top: 12px; left: 12px;
+      font-size: 18px;
+      color: #ffcd75;
+      pointer-events: none;
+      text-shadow: 2px 2px 0 #1a1c2c;
+    }
+    #overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 12px;
+      background: rgba(26, 28, 44, 0.85);
+      cursor: pointer;
+      z-index: 10;
+      overflow: hidden;
+    }
+    #overlay.show { display: flex; }
+    #overlay .title {
+      font-size: 64px;
+      color: #ffcd75;
+      text-shadow: 4px 4px 0 #b13e53;
+      animation: wiggle 0.55s ease-in-out infinite;
+      transform-origin: center bottom;
+    }
+    #overlay .byebye {
+      font-size: 32px;
+      color: #a7f070;
+      text-shadow: 3px 3px 0 #38b764;
+      animation: bounce 0.7s ease-in-out infinite;
+    }
+    #overlay .sub {
+      font-size: 22px;
+      color: #f4f4f4;
+    }
+    #overlay .hint {
+      margin-top: 16px;
+      font-size: 16px;
+      color: #a7f070;
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    #overlay.win .title { color: #a7f070; text-shadow: 4px 4px 0 #38b764; }
+    #overlay.win .byebye { color: #ffcd75; text-shadow: 3px 3px 0 #ef7d57; }
+    #npc {
+      width: 96px; height: 96px;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      animation: wave 0.5s ease-in-out infinite;
+      transform-origin: bottom center;
+    }
+    .confetti {
+      position: absolute;
+      width: 10px; height: 14px;
+      top: -20px;
+      animation: fall linear forwards;
+      pointer-events: none;
+    }
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(-3deg) translateY(0); }
+      50%      { transform: rotate(3deg) translateY(-4px); }
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50%      { transform: translateY(-14px); }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.55; }
+      50%      { opacity: 1.0; }
+    }
+    @keyframes wave {
+      0%, 100% { transform: rotate(-6deg); }
+      50%      { transform: rotate(6deg); }
+    }
+    @keyframes fall {
+      0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+      100% { transform: translate(var(--dx), 110vh) rotate(720deg); opacity: 0.7; }
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">Floor 1 / 12</div>
+  <div id="overlay">
+    <img id="npc" alt="">
+    <div class="title">try again!</div>
+    <div class="byebye">byebye~ ✨</div>
+    <div class="sub" id="overlaySub">made it to floor 1</div>
+    <div class="hint">click anywhere — or press any key</div>
+  </div>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://esm.sh/three@0.169.0"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+
+    // -------- Palette --------
+    const PAL = {
+      shadow:   0x1a1c2c,
+      purple:   0x5d275d,
+      greenDk:  0x38b764,
+      greenLt:  0xa7f070,
+      pink:     0xb13e53,
+      orange:   0xef7d57,
+      yellow:   0xffcd75,
+      white:    0xf4f4f4,
+    };
+
+    // -------- Render target (low-res for crunchy pixels) --------
+    const PIXEL_W = 320, PIXEL_H = 180;
+
+    const renderer = new THREE.WebGLRenderer({ antialias: false });
+    renderer.setPixelRatio(1);
+    document.body.appendChild(renderer.domElement);
+
+    const target = new THREE.WebGLRenderTarget(PIXEL_W, PIXEL_H, {
+      minFilter: THREE.NearestFilter,
+      magFilter: THREE.NearestFilter,
+      generateMipmaps: false,
+    });
+
+    // -------- Scene --------
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(PAL.shadow);
+
+    // First-person camera: head height, looking toward doors
+    const camera = new THREE.PerspectiveCamera(70, PIXEL_W / PIXEL_H, 0.1, 100);
+    const SPAWN = new THREE.Vector3(0, 1.6, 4);
+    camera.position.copy(SPAWN);
+    camera.lookAt(0, 1.6, -3);
+
+    // floor (GB dark green)
+    const floor = new THREE.Mesh(
+      new THREE.PlaneGeometry(20, 20),
+      new THREE.MeshBasicMaterial({ color: PAL.greenDk })
+    );
+    floor.rotation.x = -Math.PI / 2;
+    scene.add(floor);
+
+    // back wall accent stripe (purple)
+    const wall = new THREE.Mesh(
+      new THREE.PlaneGeometry(20, 4),
+      new THREE.MeshBasicMaterial({ color: PAL.purple })
+    );
+    wall.position.set(0, 2, -8);
+    scene.add(wall);
+
+    // -------- Sprite helpers --------
+    function solidTexture(hex, w, h) {
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#' + hex.toString(16).padStart(6, '0');
+      ctx.fillRect(0, 0, w, h);
+      const t = new THREE.CanvasTexture(c);
+      t.magFilter = THREE.NearestFilter;
+      t.minFilter = THREE.NearestFilter;
+      t.generateMipmaps = false;
+      return t;
+    }
+
+    function spriteFromCanvas(draw, w, h, scaleX, scaleY) {
+      const c = document.createElement('canvas');
+      c.width = w; c.height = h;
+      const ctx = c.getContext('2d');
+      draw(ctx, w, h);
+      const tex = new THREE.CanvasTexture(c);
+      tex.magFilter = THREE.NearestFilter;
+      tex.minFilter = THREE.NearestFilter;
+      tex.generateMipmaps = false;
+      const mat = new THREE.SpriteMaterial({ map: tex });
+      const s = new THREE.Sprite(mat);
+      s.scale.set(scaleX, scaleY, 1);
+      return s;
+    }
+
+    function colorHex(hex) {
+      return '#' + hex.toString(16).padStart(6, '0');
+    }
+
+    // First-person — no player sprite, the camera is the player.
+
+    // -------- Doors (16x32, purple frame, lighter green inside) --------
+    function makeDoor(x) {
+      const s = spriteFromCanvas((ctx, w, h) => {
+        // outer frame (purple)
+        ctx.fillStyle = colorHex(PAL.purple);
+        ctx.fillRect(0, 0, w, h);
+        // inner panel (green-light)
+        ctx.fillStyle = colorHex(PAL.greenLt);
+        ctx.fillRect(2, 2, w - 4, h - 4);
+        // top arch hint (orange)
+        ctx.fillStyle = colorHex(PAL.orange);
+        ctx.fillRect(2, 2, w - 4, 4);
+        // knob (yellow)
+        ctx.fillStyle = colorHex(PAL.yellow);
+        ctx.fillRect(w - 5, h / 2, 1, 1);
+      }, 16, 32, 1.6, 3.2);
+      s.position.set(x, 1.6, -3);
+      return s;
+    }
+
+    const DOOR_X = 2.2;
+    const DOOR_Z = -3;
+    const DOOR_TRIGGER_Z = -2.0; // crossing this z plane fires the choice
+    const doorL = makeDoor(-DOOR_X);
+    const doorR = makeDoor(DOOR_X);
+    scene.add(doorL, doorR);
+
+    // -------- Game state + seeded path --------
+    const N_FLOORS = 12;
+    const SEED = 0xC0FFEE;
+    function mulberry32(a) {
+      return function () {
+        a |= 0; a = (a + 0x6D2B79F5) | 0;
+        let t = a;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    const rand = mulberry32(SEED);
+    const PATH = Array.from({ length: N_FLOORS }, () => (rand() < 0.5 ? 0 : 1)); // 0=L, 1=R
+    console.log('Seeded path (debug):', PATH.map(b => (b ? 'R' : 'L')).join(''));
+
+    const state = { floor: 0, phase: 'playing' }; // 'playing' | 'failed' | 'won'
+
+    // -------- localStorage best floor --------
+    const STORAGE_KEY = 'w212-best';
+    let bestFloor = parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10) || 0;
+    function recordIfBetter(reachedFloor) {
+      if (reachedFloor > bestFloor) {
+        bestFloor = reachedFloor;
+        localStorage.setItem(STORAGE_KEY, String(bestFloor));
+      }
+    }
+
+    // -------- BGM (procedural chiptune, never stops) --------
+    const BGM = (() => {
+      let ctx = null, master = null, started = false, nextStart = 0;
+      const BPM = 132;
+      const beat = 60 / BPM;
+      const eighth = beat / 2;
+      const m2hz = m => 440 * Math.pow(2, (m - 69) / 12);
+      // Cheery 4-bar loop in C major — 32 eighth-note melody + 16 quarter-note bass
+      const MELODY = [
+        72, 76, 79, 76, 74, 76, 72, 71,
+        74, 76, 79, 81, 79, 76, 74, 72,
+        72, 76, 79, 76, 74, 76, 72, 67,
+        69, 72, 74, 76, 74, 72, 69, 64,
+      ];
+      const BASS = [
+        48, 48, 48, 48,
+        53, 53, 53, 53,
+        55, 55, 55, 55,
+        48, 48, 48, 48,
+      ];
+      function blip(freq, t, dur, type, peak) {
+        const osc = ctx.createOscillator();
+        osc.type = type;
+        osc.frequency.value = freq;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(peak, t + 0.008);
+        g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+        osc.connect(g); g.connect(master);
+        osc.start(t);
+        osc.stop(t + dur + 0.05);
+      }
+      function scheduleBar() {
+        const t0 = nextStart;
+        for (let i = 0; i < 32; i++) {
+          blip(m2hz(MELODY[i]), t0 + i * eighth, eighth * 0.85, 'square', 0.10);
+        }
+        for (let i = 0; i < 16; i++) {
+          blip(m2hz(BASS[i]), t0 + i * (eighth * 2), eighth * 1.8, 'triangle', 0.18);
+        }
+        nextStart = t0 + 32 * eighth;
+      }
+      function start() {
+        if (started) return;
+        started = true;
+        ctx = new (window.AudioContext || window.webkitAudioContext)();
+        master = ctx.createGain();
+        master.gain.value = 0.6;
+        master.connect(ctx.destination);
+        nextStart = ctx.currentTime + 0.1;
+        scheduleBar();
+        setInterval(() => {
+          while (nextStart - ctx.currentTime < 1.0) scheduleBar();
+        }, 250);
+      }
+      return { start };
+    })();
+
+    // Per-floor wall color cycle (8 palette colors → cycles through 12 floors)
+    const FLOOR_WALL_COLORS = [
+      PAL.purple, PAL.pink, PAL.orange, PAL.yellow,
+      PAL.greenLt, PAL.greenDk, PAL.purple, PAL.pink,
+      PAL.orange, PAL.yellow, PAL.greenLt, PAL.greenDk,
+    ];
+    function applyFloorVisuals() {
+      wall.material.color.setHex(FLOOR_WALL_COLORS[state.floor]);
+    }
+    applyFloorVisuals();
+
+    const hud = document.getElementById('hud');
+    const overlay = document.getElementById('overlay');
+    const overlaySub = document.getElementById('overlaySub');
+    const npcImg = document.getElementById('npc');
+
+    // -------- Build NPC sprite (24x24 yellow blob, smile, raised waving hand) --------
+    {
+      const c = document.createElement('canvas');
+      c.width = 24; c.height = 24;
+      const ctx = c.getContext('2d');
+      // body
+      ctx.fillStyle = colorHex(PAL.yellow);
+      ctx.fillRect(5, 6, 14, 14);
+      ctx.fillRect(6, 5, 12, 16);
+      ctx.fillRect(7, 4, 10, 18);
+      // body shadow
+      ctx.fillStyle = colorHex(PAL.orange);
+      ctx.fillRect(5, 17, 14, 3);
+      // eyes (closed-curve happy)
+      ctx.fillStyle = colorHex(PAL.shadow);
+      ctx.fillRect(8, 9, 2, 1);
+      ctx.fillRect(7, 10, 1, 1);
+      ctx.fillRect(10, 10, 1, 1);
+      ctx.fillRect(14, 9, 2, 1);
+      ctx.fillRect(13, 10, 1, 1);
+      ctx.fillRect(16, 10, 1, 1);
+      // big smile
+      ctx.fillStyle = colorHex(PAL.pink);
+      ctx.fillRect(9, 14, 6, 2);
+      ctx.fillRect(8, 13, 1, 1);
+      ctx.fillRect(15, 13, 1, 1);
+      // raised waving hand (top right)
+      ctx.fillStyle = colorHex(PAL.yellow);
+      ctx.fillRect(19, 1, 4, 4);
+      ctx.fillStyle = colorHex(PAL.orange);
+      ctx.fillRect(18, 5, 3, 2);
+      // sparkle
+      ctx.fillStyle = colorHex(PAL.white);
+      ctx.fillRect(0, 2, 1, 1);
+      ctx.fillRect(1, 1, 1, 1);
+      ctx.fillRect(1, 3, 1, 1);
+      npcImg.src = c.toDataURL();
+    }
+
+    // -------- Confetti spawner --------
+    const CONFETTI_COLORS = [PAL.pink, PAL.orange, PAL.yellow, PAL.greenLt, PAL.purple, PAL.white];
+    function spawnConfetti(n) {
+      // clear old confetti first
+      overlay.querySelectorAll('.confetti').forEach(el => el.remove());
+      for (let i = 0; i < n; i++) {
+        const el = document.createElement('div');
+        el.className = 'confetti';
+        const color = CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+        el.style.background = colorHex(color);
+        el.style.left = (Math.random() * 100) + 'vw';
+        el.style.top = (-Math.random() * 30 - 5) + 'vh';
+        el.style.setProperty('--dx', ((Math.random() - 0.5) * 200) + 'px');
+        el.style.animationDuration = (1.6 + Math.random() * 1.8) + 's';
+        el.style.animationDelay = (Math.random() * 0.6) + 's';
+        overlay.appendChild(el);
+      }
+    }
+
+    function updateHud() {
+      const bestStr = bestFloor > 0 ? ` — best ${bestFloor}` : '';
+      hud.textContent = `Floor ${state.floor + 1} / ${N_FLOORS}${bestStr}`;
+    }
+    function showOverlay(kind, sub) {
+      overlay.classList.toggle('win', kind === 'win');
+      overlay.querySelector('.title').textContent = kind === 'win' ? 'cleared!' : 'try again!';
+      overlay.querySelector('.byebye').textContent = kind === 'win' ? 'wow~ ✨' : 'byebye~ ✨';
+      overlaySub.textContent = sub;
+      overlay.classList.add('show');
+      spawnConfetti(kind === 'win' ? 80 : 40);
+    }
+    function hideOverlay() {
+      overlay.classList.remove('show');
+      overlay.querySelectorAll('.confetti').forEach(el => el.remove());
+    }
+    function resetGame() {
+      state.floor = 0;
+      state.phase = 'playing';
+      camera.position.copy(SPAWN);
+      applyFloorVisuals();
+      updateHud();
+      hideOverlay();
+    }
+    overlay.addEventListener('click', resetGame);
+    updateHud();
+
+    function commitChoice() {
+      if (state.phase !== 'playing') return;
+      if (camera.position.z > DOOR_TRIGGER_Z) return;
+      const choice = camera.position.x < 0 ? 0 : 1;
+      const want = PATH[state.floor];
+      if (choice === want) {
+        state.floor++;
+        if (state.floor >= N_FLOORS) {
+          state.phase = 'won';
+          recordIfBetter(N_FLOORS);
+          console.log('WIN');
+          showOverlay('win', `cleared all ${N_FLOORS} floors — best ${bestFloor}`);
+        } else {
+          console.log(`Floor ${state.floor + 1} — correct (${choice ? 'R' : 'L'})`);
+          camera.position.copy(SPAWN);
+          applyFloorVisuals();
+        }
+      } else {
+        const reachedFloor = state.floor + 1;
+        recordIfBetter(reachedFloor);
+        state.phase = 'failed';
+        console.log(`WRONG — picked ${choice ? 'R' : 'L'}, needed ${want ? 'R' : 'L'}`);
+        showOverlay('fail', `made it to floor ${reachedFloor} — best ${bestFloor}`);
+      }
+      updateHud();
+    }
+
+    // -------- Fullscreen upscale pass --------
+    const fsScene = new THREE.Scene();
+    const fsCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+    const fsMat = new THREE.MeshBasicMaterial({ map: target.texture });
+    fsScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), fsMat));
+
+    // -------- Resize: keep pixel aspect, fit window with letterboxing --------
+    function resize() {
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      // integer scale so pixels stay sharp
+      const scale = Math.max(1, Math.floor(Math.min(W / PIXEL_W, H / PIXEL_H)));
+      const cw = PIXEL_W * scale;
+      const ch = PIXEL_H * scale;
+      renderer.setSize(cw, ch, false);
+      const c = renderer.domElement;
+      c.style.position = 'fixed';
+      c.style.left = ((W - cw) / 2) + 'px';
+      c.style.top = ((H - ch) / 2) + 'px';
+      c.style.width = cw + 'px';
+      c.style.height = ch + 'px';
+    }
+    resize();
+    addEventListener('resize', resize);
+
+    // -------- Input (use e.code so layout/IME doesn't matter) --------
+    const keys = Object.create(null);
+    addEventListener('keydown', e => {
+      keys[e.code] = true;
+      BGM.start();
+      if (state.phase !== 'playing') resetGame();
+    });
+    addEventListener('keyup', e => keys[e.code] = false);
+    // Also start BGM on overlay click (covers fail → click → next attempt path)
+    overlay.addEventListener('click', () => BGM.start());
+
+    // -------- Loop --------
+    const SPEED = 0.06;
+    function tick() {
+      if (state.phase === 'playing') {
+        let dx = 0, dz = 0;
+        if (keys.KeyW || keys.ArrowUp)    dz -= 1;
+        if (keys.KeyS || keys.ArrowDown)  dz += 1;
+        if (keys.KeyA || keys.ArrowLeft)  dx -= 1;
+        if (keys.KeyD || keys.ArrowRight) dx += 1;
+        const len = Math.hypot(dx, dz);
+        if (len > 0) {
+          camera.position.x += (dx / len) * SPEED;
+          camera.position.z += (dz / len) * SPEED;
+          camera.position.x = Math.max(-9, Math.min(9, camera.position.x));
+          camera.position.z = Math.max(-7, Math.min(9, camera.position.z));
+        }
+        commitChoice();
+      }
+
+      renderer.setRenderTarget(target);
+      renderer.render(scene, camera);
+      renderer.setRenderTarget(null);
+      renderer.render(fsScene, fsCamera);
+
+      requestAnimationFrame(tick);
+    }
+    tick();
+  </script>
+</body>
+</html>

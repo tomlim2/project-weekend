@@ -1,27 +1,23 @@
 # project-weekend
 
-주말마다 만든 프로토타입 모음.
+주말마다 만드는 프로토타입 모음. 한 컨셉을 끝내면 다음 컨셉으로 이동, 이전 단계는 archive 또는 prototypes/ 에 보존.
 
-## Hallucination Aquarium
+## 활성 프로토타입
 
-신종 어류 관측 시스템 — 진지한 어류학자가 일상 사물을 어류로 기록하는 상황에서 오는 괴리감을 톤으로 삼은 텍스트 생성 프로토타입.
+- [`prototypes/weekend-survivor/`](prototypes/weekend-survivor/) — Vampire Survivors–style auto-shooter. **Bevy 0.18 (Rust)**. MVP 완료 (2026-05-02, A~H 8 stage).
+- [`prototypes/weekend-two-to-twelve/`](prototypes/weekend-two-to-twelve/) — 2개 문 × 12층 trial-and-error 약올림 게임. **Three.js 단일 HTML, 빌드 0**. MVP 완료 (2026-05-02, A~F 6 stage).
 
-- 단일 HTML 파일, 빌드 없이 브라우저에서 바로 실행
-- 최신 버전: [`prototypes/generator-v8.html`](prototypes/generator-v8.html)
-- v0 → v8 반복 기록은 같은 폴더에 그대로 보존
+## Archive
 
-## 폴더 구조
+- [`archive/aquarium/`](archive/aquarium/) — Hallucination Aquarium / 신종 어류 관측 시스템. 단일 HTML 프로토타입 v0~v8. 톤 실험으로 종료.
 
-```
-prototypes/   각 버전 단일 HTML 프로토타입
-docs/         시드, 묘사 톤, 알고리즘, 희귀도, 액자 설계 문서
-docs/research 장르 분석, 유사 게임, 설계 기준
-```
+## 폴더 규칙
 
-## 실행
+- 살아있는 프로토타입 = `prototypes/<name>/`
+- 종료된 프로토타입 = `archive/<name>/`
+- 결정/회고/일지 같은 영속 기록은 옵시디언 (`claude/projects/project-weekend/`)
+- 이 레포는 코드와 게임 명세 (CONCEPT.md, README.md) 만
 
-```sh
-open prototypes/generator-v8.html
-```
+## 라이선스
 
-또는 어떤 정적 서버든 띄워서 해당 파일 열기.
+[`LICENSE`](LICENSE) — 모든 권리 보유. 열람은 가능, 사용/복제/모델 학습 모두 명시 허락 필요.
