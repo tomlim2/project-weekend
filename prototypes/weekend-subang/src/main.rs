@@ -2,11 +2,13 @@ use bevy::prelude::*;
 use bevy::window::WindowResolution;
 
 mod player;
+mod weapon;
 
 use player::PlayerPlugin;
+use weapon::WeaponPlugin;
 
-const WINDOW_W: u32 = 540;
-const WINDOW_H: u32 = 960;
+pub const WINDOW_W: u32 = 540;
+pub const WINDOW_H: u32 = 960;
 
 #[derive(States, Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum GameState {
@@ -28,7 +30,7 @@ fn main() {
             ..default()
         }))
         .init_state::<GameState>()
-        .add_plugins(PlayerPlugin)
+        .add_plugins((PlayerPlugin, WeaponPlugin))
         .add_systems(Startup, setup_camera)
         .run();
 }

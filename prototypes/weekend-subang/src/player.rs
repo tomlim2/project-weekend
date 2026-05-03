@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::weapon::AutoFire;
 use crate::GameState;
 
 const PLAYER_SPEED: f32 = 220.0;
@@ -32,6 +33,7 @@ fn spawn_player(
 ) {
     commands.spawn((
         Player { focused: false },
+        AutoFire::default(),
         Mesh2d(meshes.add(Rectangle::new(PLAYER_W, PLAYER_H))),
         MeshMaterial2d(materials.add(Color::srgb(0.85, 0.94, 1.0))),
         Transform::from_xyz(0.0, -PLAY_FIELD_H * 0.35, 0.0),
