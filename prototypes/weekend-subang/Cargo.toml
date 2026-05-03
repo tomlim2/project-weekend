@@ -1,0 +1,16 @@
+[package]
+name = "weekend-subang"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bevy = { version = "0.18", features = ["wav"] }
+rand = "0.8"
+
+# Iteration speed: own crate compiles fast (debug),
+# deps compile optimized once.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
