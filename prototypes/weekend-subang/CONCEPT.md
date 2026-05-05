@@ -68,11 +68,12 @@ Touhou-style 탄막 슈터, Bevy 0.18, 키보드 전용. Endless wave + Bomb 메
 | **A** | 윈도우 + 카메라 + 플레이어 도형 + 화살표 이동 + Focus 속도 변화 | 화면 안에서 움직이고 Shift 시 절반 속도 | `139588c` |
 | **A2** | 270×480 RT + 540×960 nearest 업스케일 (faux-pixel) | 도형이 픽셀화돼 보임 | — |
 | **B** | Auto-fire 위 방향 + PlayerBullet + lifetime + 화면 밖 despawn + Focus 시 spread 좁아짐 | 1초당 ~10발, fan 3-shot (normal) / parallel 2-shot (focus) | `d6ebd5f` |
-| **C** | 적 spawn (top edge) + 직선 하강 + PlayerBullet↔적 1샷킬 + 점수 | 적이 떨어지며 죽고 점수 누적 | (in progress) |
-| D | EnemyBulletEmitter — aimed + ring 2 패턴, 적별 다른 패턴 | 화면에 탄막 ≥100 발, 패턴 구분됨 | — |
-| E | Player tiny hitbox(2~3px) + HP/잔기 3 + IFrame 1.5s + GameOver state + R 재시작 | 일부러 맞아서 잔기 깎이고 0 → 게임오버 | — |
-| F | Bomb (X) 잔량 3 + 화면 탄 erase + 1.0s invuln + 시각 ring | 탄막 한가운데서 X → 살아남음 | — |
-| G | SFX 4종 (shot/hit/bomb/death) + HUD 풀 (score/hi/잔기/봄/시간) + best score JSON persist | 게임 끝나면 best score 갱신, 재실행 시 유지 | — |
+| **C** | 적 spawn (top edge) + 직선 하강 + PlayerBullet↔적 1샷킬 + 점수 | 적이 떨어지며 죽고 점수 누적 | `a4dd597` |
+| **D** | EnemyBulletEmitter — aimed + ring 2 패턴, 적별 다른 패턴 | 화면에 탄막 ≥100 발, 패턴 구분됨 | `4595248` |
+| **E** | Player tiny hitbox(2~3px) + HP/잔기 3 + IFrame 1.0s + GameOver state + R 재시작 | 일부러 맞아서 잔기 깎이고 0 → 게임오버 | `008026a` |
+| **F** | Bomb (X) 잔량 3 + 화면 탄 erase + 1.0s invuln + 시각 ring | 탄막 한가운데서 X → 살아남음 | `c396032` |
+| **G** | SFX 4종 (shot/hit/bomb/death) + HUD 풀 (score/hi/잔기/봄/시간) + best score JSON persist | 게임 끝나면 best score 갱신, 재실행 시 유지 | `7bde4ff` |
+| polish | IFrame 1.0s + Visibility 블링크 + 하트/별 HUD + WASD | (사양 외 보너스) | `3d9d872` |
 
 ## Architecture (planned)
 
