@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
 
+mod bomb;
 mod combat;
 mod emitter;
 mod enemy;
@@ -8,6 +9,7 @@ mod hp;
 mod player;
 mod weapon;
 
+use bomb::BombPlugin;
 use combat::CombatPlugin;
 use emitter::EmitterPlugin;
 use enemy::EnemyPlugin;
@@ -45,6 +47,7 @@ fn main() {
             EmitterPlugin,
             CombatPlugin,
             HpPlugin,
+            BombPlugin,
         ))
         .add_systems(Startup, setup_camera)
         .run();
