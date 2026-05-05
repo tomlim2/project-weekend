@@ -9,7 +9,7 @@ use crate::weapon::PlayerBullet;
 use crate::GameState;
 
 const ENEMY_BULLET_RADIUS: f32 = 4.0;
-const IFRAME_DURATION: f32 = 1.5;
+const IFRAME_DURATION: f32 = 1.0;
 pub const STARTING_LIVES: i32 = 3;
 
 #[derive(Resource)]

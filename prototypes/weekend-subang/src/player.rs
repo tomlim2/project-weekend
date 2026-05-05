@@ -81,16 +81,16 @@ fn move_player(
     };
 
     let mut dir = Vec2::ZERO;
-    if keys.pressed(KeyCode::ArrowUp) {
+    if keys.pressed(KeyCode::ArrowUp) || keys.pressed(KeyCode::KeyW) {
         dir.y += 1.0;
     }
-    if keys.pressed(KeyCode::ArrowDown) {
+    if keys.pressed(KeyCode::ArrowDown) || keys.pressed(KeyCode::KeyS) {
         dir.y -= 1.0;
     }
-    if keys.pressed(KeyCode::ArrowLeft) {
+    if keys.pressed(KeyCode::ArrowLeft) || keys.pressed(KeyCode::KeyA) {
         dir.x -= 1.0;
     }
-    if keys.pressed(KeyCode::ArrowRight) {
+    if keys.pressed(KeyCode::ArrowRight) || keys.pressed(KeyCode::KeyD) {
         dir.x += 1.0;
     }
 
@@ -127,20 +127,23 @@ fn toggle_hitbox_visibility(
 
 fn blink_player_iframe(
     time: Res<Time>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    q: Query<(&IFrame, &MeshMaterial2d<ColorMaterial>), With<Player>>,
+    mut q: Query<(&IFrame, &mut Visibility), With<Player>>,
 ) {
-    let Ok((iframe, mat)) = q.single() else {
+    let Ok((iframe, mut vis)) = q.single_mut() else {
         return;
     };
-    let Some(color_mat) = materials.get_mut(&mat.0) else {
-        return;
-    };
-    let alpha = if iframe.0 > 0.0 {
-        let phase = (time.elapsed_secs() * 18.0).sin();
-        0.45 + 0.35 * (phase * 0.5 + 0.5)
+    let target = if iframe.0 > 0.0 {
+        // ~10 Hz square blink: 5 cycles per second of on/off
+        let phase = (time.elapsed_secs() * 20.0).floor() as i32;
+        if phase % 2 == 0 {
+            Visibility::Hidden
+        } else {
+            Visibility::Visible
+        }
     } else {
-        1.0
+        Visibility::Visible
     };
-    color_mat.color = color_mat.color.with_alpha(alpha);
+    if *vis != target {
+        *vis = target;
+    }
 }

@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
-use crate::bomb::Bombs;
+use crate::bomb::{Bombs, STARTING_BOMBS};
 use crate::combat::Score;
-use crate::hp::Lives;
+use crate::hp::{Lives, STARTING_LIVES};
 use crate::persist::BestScore;
 use crate::GameState;
 
@@ -72,8 +72,10 @@ fn spawn_hud(mut commands: Commands) {
             ..default()
         },))
         .with_children(|p| {
-            p.spawn((HudLives, Text::new("LIVES 3"), font.clone(), color));
-            p.spawn((HudBombs, Text::new("BOMBS 3"), font, color));
+            let hearts_color = TextColor(Color::srgb(1.0, 0.45, 0.55));
+            let bombs_color = TextColor(Color::srgb(1.0, 0.85, 0.45));
+            p.spawn((HudLives, Text::new(hearts_string(STARTING_LIVES, STARTING_LIVES as i32)), font.clone(), hearts_color));
+            p.spawn((HudBombs, Text::new(stars_string(STARTING_BOMBS, STARTING_BOMBS)), font, bombs_color));
         });
 }
 
@@ -102,10 +104,10 @@ fn refresh_hud(
         t.0 = format!("HI    {}", shown);
     }
     if let Ok(mut t) = q_lives.single_mut() {
-        t.0 = format!("LIVES {}", lives.0.max(0));
+        t.0 = hearts_string(STARTING_LIVES, lives.0);
     }
     if let Ok(mut t) = q_bombs.single_mut() {
-        t.0 = format!("BOMBS {}", bombs.0);
+        t.0 = stars_string(STARTING_BOMBS, bombs.0);
     }
     if let Ok(mut t) = q_time.single_mut() {
         t.0 = format!("TIME  {:.1}", rt.0);
@@ -114,4 +116,33 @@ fn refresh_hud(
 
 fn reset_runtime(mut rt: ResMut<RunTime>) {
     rt.0 = 0.0;
+}
+
+fn hearts_string(max: i32, current: i32) -> String {
+    let cur = current.max(0);
+    let filled = cur.min(max);
+    let empty = (max - filled).max(0);
+    let mut s = String::with_capacity((max as usize) * 4 + 6);
+    s.push_str("LIFE ");
+    for _ in 0..filled {
+        s.push('\u{2665}'); // ♥ filled heart
+    }
+    for _ in 0..empty {
+        s.push('\u{2661}'); // ♡ empty heart
+    }
+    s
+}
+
+fn stars_string(max: u32, current: u32) -> String {
+    let filled = current.min(max);
+    let empty = max.saturating_sub(filled);
+    let mut s = String::with_capacity((max as usize) * 4 + 6);
+    s.push_str("BOMB[X] ");
+    for _ in 0..filled {
+        s.push('\u{2605}'); // ★ filled star
+    }
+    for _ in 0..empty {
+        s.push('\u{2606}'); // ☆ empty star
+    }
+    s
 }
