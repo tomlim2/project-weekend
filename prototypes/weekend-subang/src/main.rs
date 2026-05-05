@@ -4,12 +4,14 @@ use bevy::window::WindowResolution;
 mod combat;
 mod emitter;
 mod enemy;
+mod hp;
 mod player;
 mod weapon;
 
 use combat::CombatPlugin;
 use emitter::EmitterPlugin;
 use enemy::EnemyPlugin;
+use hp::HpPlugin;
 use player::PlayerPlugin;
 use weapon::WeaponPlugin;
 
@@ -42,6 +44,7 @@ fn main() {
             EnemyPlugin,
             EmitterPlugin,
             CombatPlugin,
+            HpPlugin,
         ))
         .add_systems(Startup, setup_camera)
         .run();
