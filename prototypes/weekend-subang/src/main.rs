@@ -2,11 +2,13 @@ use bevy::prelude::*;
 use bevy::window::WindowResolution;
 
 mod combat;
+mod emitter;
 mod enemy;
 mod player;
 mod weapon;
 
 use combat::CombatPlugin;
+use emitter::EmitterPlugin;
 use enemy::EnemyPlugin;
 use player::PlayerPlugin;
 use weapon::WeaponPlugin;
@@ -34,7 +36,13 @@ fn main() {
             ..default()
         }))
         .init_state::<GameState>()
-        .add_plugins((PlayerPlugin, WeaponPlugin, EnemyPlugin, CombatPlugin))
+        .add_plugins((
+            PlayerPlugin,
+            WeaponPlugin,
+            EnemyPlugin,
+            EmitterPlugin,
+            CombatPlugin,
+        ))
         .add_systems(Startup, setup_camera)
         .run();
 }

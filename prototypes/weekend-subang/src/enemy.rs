@@ -1,13 +1,14 @@
 use bevy::prelude::*;
 use rand::Rng;
 
+use crate::emitter::BulletEmitter;
 use crate::weapon::{Lifetime, Velocity};
 use crate::GameState;
 
 const SPAWN_INTERVAL: f32 = 0.7;
 const ENEMY_RADIUS: f32 = 10.0;
-const ENEMY_SPEED: f32 = 180.0;
-const ENEMY_LIFETIME: f32 = 8.0;
+const ENEMY_SPEED: f32 = 110.0;
+const ENEMY_LIFETIME: f32 = 10.0;
 const SPAWN_X_HALF_RANGE: f32 = 220.0; // ±220 from center
 
 #[derive(Component)]
@@ -50,13 +51,27 @@ fn spawn_enemies(
     let x = rng.gen_range(-SPAWN_X_HALF_RANGE..SPAWN_X_HALF_RANGE);
     let y = crate::WINDOW_H as f32 * 0.5 + ENEMY_RADIUS + 4.0;
 
+    let aimed = rng.gen_bool(0.5);
+    let (color, emitter) = if aimed {
+        (
+            Color::srgb(1.0, 0.55, 0.45),
+            BulletEmitter::aimed(3, 12.0, 220.0, 1.5),
+        )
+    } else {
+        (
+            Color::srgb(0.55, 0.7, 1.0),
+            BulletEmitter::ring(12, 160.0, 7.0, 0.8),
+        )
+    };
+
     commands.spawn((
         Enemy,
         Hp(1),
         Velocity(Vec2::new(0.0, -ENEMY_SPEED)),
         Lifetime(0.0),
+        emitter,
         Mesh2d(meshes.add(Circle::new(ENEMY_RADIUS))),
-        MeshMaterial2d(materials.add(Color::srgb(1.0, 0.4, 0.45))),
+        MeshMaterial2d(materials.add(color)),
         Transform::from_xyz(x, y, 0.0),
     ));
 }
