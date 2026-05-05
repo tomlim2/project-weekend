@@ -6,7 +6,10 @@ mod combat;
 mod emitter;
 mod enemy;
 mod hp;
+mod hud;
+mod persist;
 mod player;
+mod sfx;
 mod weapon;
 
 use bomb::BombPlugin;
@@ -14,7 +17,10 @@ use combat::CombatPlugin;
 use emitter::EmitterPlugin;
 use enemy::EnemyPlugin;
 use hp::HpPlugin;
+use hud::HudPlugin;
+use persist::PersistPlugin;
 use player::PlayerPlugin;
+use sfx::SfxPlugin;
 use weapon::WeaponPlugin;
 
 pub const WINDOW_W: u32 = 540;
@@ -48,6 +54,9 @@ fn main() {
             CombatPlugin,
             HpPlugin,
             BombPlugin,
+            SfxPlugin,
+            PersistPlugin,
+            HudPlugin,
         ))
         .add_systems(Startup, setup_camera)
         .run();

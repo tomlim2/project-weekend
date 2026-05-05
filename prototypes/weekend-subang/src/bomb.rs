@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::emitter::EnemyBullet;
 use crate::hp::IFrame;
 use crate::player::Player;
+use crate::sfx::{PlaySfx, SfxKind};
 use crate::GameState;
 
 pub const STARTING_BOMBS: u32 = 3;
@@ -41,6 +42,7 @@ impl Plugin for BombPlugin {
 fn trigger_bomb(
     mut commands: Commands,
     mut bombs: ResMut<Bombs>,
+    mut sfx: MessageWriter<PlaySfx>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     keys: Res<ButtonInput<KeyCode>>,
@@ -57,6 +59,7 @@ fn trigger_bomb(
         return;
     };
     bombs.0 -= 1;
+    sfx.write(PlaySfx(SfxKind::Bomb));
     iframe.0 = iframe.0.max(BOMB_INVULN);
     for e in &bullets {
         commands.entity(e).despawn();

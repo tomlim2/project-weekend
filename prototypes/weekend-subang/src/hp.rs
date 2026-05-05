@@ -4,6 +4,7 @@ use crate::combat::Score;
 use crate::emitter::EnemyBullet;
 use crate::enemy::{Enemy, EnemySpawner};
 use crate::player::{Player, PLAYER_HITBOX_RADIUS, PLAYER_START_Y};
+use crate::sfx::{PlaySfx, SfxKind};
 use crate::weapon::PlayerBullet;
 use crate::GameState;
 
@@ -82,8 +83,13 @@ fn tick_iframe(time: Res<Time>, mut q: Query<&mut IFrame, With<Player>>) {
     }
 }
 
-fn check_game_over(lives: Res<Lives>, mut next: ResMut<NextState<GameState>>) {
+fn check_game_over(
+    lives: Res<Lives>,
+    mut next: ResMut<NextState<GameState>>,
+    mut sfx: MessageWriter<PlaySfx>,
+) {
     if lives.0 <= 0 {
+        sfx.write(PlaySfx(SfxKind::Death));
         next.set(GameState::GameOver);
     }
 }

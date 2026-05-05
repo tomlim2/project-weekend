@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::player::Player;
+use crate::sfx::{PlaySfx, SfxKind};
 use crate::GameState;
 
 const FIRE_COOLDOWN: f32 = 0.1; // 10 shots/sec
@@ -48,6 +49,7 @@ impl Plugin for WeaponPlugin {
 fn auto_fire(
     time: Res<Time>,
     mut commands: Commands,
+    mut sfx: MessageWriter<PlaySfx>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut q: Query<(&Player, &Transform, &mut AutoFire)>,
@@ -61,6 +63,7 @@ fn auto_fire(
         return;
     }
     fire.since_last = 0.0;
+    sfx.write(PlaySfx(SfxKind::Shot));
 
     let origin = transform.translation.truncate() + Vec2::new(0.0, 12.0);
     let mesh = meshes.add(Rectangle::new(BULLET_W, BULLET_H));

@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::enemy::{Enemy, Hp};
+use crate::sfx::{PlaySfx, SfxKind};
 use crate::weapon::PlayerBullet;
 use crate::GameState;
 
@@ -28,6 +29,7 @@ impl Plugin for CombatPlugin {
 fn bullet_enemy_collision(
     mut commands: Commands,
     mut score: ResMut<Score>,
+    mut sfx: MessageWriter<PlaySfx>,
     bullets: Query<(Entity, &Transform), With<PlayerBullet>>,
     mut enemies: Query<(Entity, &Transform, &mut Hp), With<Enemy>>,
 ) {
@@ -52,6 +54,7 @@ fn bullet_enemy_collision(
                     killed.insert(e_entity);
                     score.kills += 1;
                     score.score += SCORE_PER_KILL;
+                    sfx.write(PlaySfx(SfxKind::Hit));
                 }
                 break;
             }
