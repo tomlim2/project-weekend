@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Weekend Emoji Runner</title>
+  <link rel="icon" href="data:,">
+  <style>
+    :root {
+      --ink: #172033;
+      --paper: #f7e7b4;
+      --coin: #ffd85a;
+      --sky: #7fc7ff;
+      --grass: #2fa36b;
+      --brick: #b65b3c;
+      --danger: #d93d4a;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      overflow: hidden;
+      background: var(--sky);
+      color: var(--paper);
+      font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+    }
+
+    canvas {
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    #hud {
+      position: fixed;
+      top: 12px;
+      left: 14px;
+      z-index: 2;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      font-size: 16px;
+      line-height: 1;
+      color: #fff6cf;
+      text-shadow: 2px 2px 0 var(--ink);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    #banner {
+      position: fixed;
+      inset: 0;
+      z-index: 3;
+      display: none;
+      place-items: center;
+      background: rgba(23, 32, 51, 0.35);
+      color: #fff6cf;
+      text-align: center;
+      text-shadow: 3px 3px 0 var(--ink);
+      user-select: none;
+    }
+
+    #banner.show {
+      display: grid;
+    }
+
+    #banner h1 {
+      margin: 0 0 12px;
+      font-size: clamp(44px, 8vw, 96px);
+      letter-spacing: 0;
+    }
+
+    #banner p {
+      margin: 0;
+      font-size: clamp(16px, 2.4vw, 24px);
+    }
+  </style>
+</head>
+<body>
+  <div id="hud">
+    <span id="coins">🪙 0 / 8</span>
+    <span id="time">⏱ 0.0</span>
+    <span>A/D + W/S</span>
+  </div>
+  <div id="banner">
+    <div>
+      <h1 id="bannerTitle">GO!</h1>
+      <p id="bannerSub">Press R to restart</p>
+    </div>
+  </div>
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://esm.sh/three@0.169.0"
+      }
+    }
+  </script>
+  <script type="module">
+    import * as THREE from 'three';
+
+    const WORLD = {
+      startX: -8.5,
+      startY: 1.25,
+      minX: -10,
+      maxX: 17.5,
+      minY: 0.55,
+      maxY: 6.5,
+      coinTotal: 8,
+    };
+
+    const COLORS = {
+      sky: 0x7fc7ff,
+      cloud: 0xfff6cf,
+      grass: 0x2fa36b,
+      dirt: 0x7b4631,
+      brick: 0xb65b3c,
+      brickDark: 0x813b2a,
+      coin: 0xffd85a,
+      hazard: 0xd93d4a,
+      flag: 0xf7e7b4,
+      pole: 0x172033,
+      shadow: 0x172033,
+    };
+
+    const renderer = new THREE.WebGLRenderer({ antialias: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(COLORS.sky);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.set(-4, 4.3, 10);
+    camera.lookAt(-4, 2.5, 0);
+
+    const clock = new THREE.Clock();
+    const keys = new Set();
+    const blocks = [];
+    const coins = [];
+    const hazards = [];
+    const clouds = [];
+    let goal;
+    let state;
+
+    const coinsEl = document.getElementById('coins');
+    const timeEl = document.getElementById('time');
+    const banner = document.getElementById('banner');
+    const bannerTitle = document.getElementById('bannerTitle');
+
+    const light = new THREE.HemisphereLight(0xffffff, 0x553322, 2.6);
+    scene.add(light);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 1.8);
+    sun.position.set(3, 8, 5);
+    scene.add(sun);
+
+    const ground = makeBlock(2.8, 0.7, 0.8, COLORS.grass, COLORS.dirt);
+    ground.position.set(3.5, 0, 0);
+    ground.scale.x = 9.8;
+    scene.add(ground);
+
+    const levelBlocks = [
+      [-8, 0.65, 0, 2.8, 0.7],
+      [-5, 0.65, 0, 2.8, 0.7],
+      [-2, 0.65, 0, 2.8, 0.7],
+      [1, 0.65, 0, 2.8, 0.7],
+      [4, 0.65, 0, 2.8, 0.7],
+      [7, 0.65, 0, 2.8, 0.7],
+      [10, 0.65, 0, 2.8, 0.7],
+      [13, 0.65, 0, 2.8, 0.7],
+      [16, 0.65, 0, 2.8, 0.7],
+      [-1.2, 2.35, 0, 2.3, 0.55],
+      [3.4, 3.25, 0, 2.3, 0.55],
+      [8.2, 2.45, 0, 2.3, 0.55],
+      [12.3, 3.35, 0, 2.3, 0.55],
+    ];
+
+    for (const [x, y, z, w, h] of levelBlocks) {
+      const block = makeBlock(w, h, 0.7, COLORS.brick, COLORS.brickDark);
+      block.position.set(x, y, z);
+      scene.add(block);
+      blocks.push({ mesh: block, x, y, w, h });
+    }
+
+    for (const [emoji, x, y, scale] of [
+      ['☁️', -7, 5.5, 1.4],
+      ['☁️', -1, 6.2, 1.1],
+      ['☁️', 6, 5.7, 1.3],
+      ['☁️', 13, 6.1, 1.0],
+    ]) {
+      const cloud = makeEmojiSprite(emoji, scale);
+      cloud.position.set(x, y, -1.1);
+      scene.add(cloud);
+      clouds.push(cloud);
+    }
+
+    for (const [x, y] of [
+      [-6.4, 1.55],
+      [-3.4, 1.55],
+      [-1.2, 3.25],
+      [2.0, 1.55],
+      [3.4, 4.1],
+      [7.2, 1.55],
+      [8.2, 3.25],
+      [12.3, 4.2],
+    ]) {
+      const coin = makeEmojiSprite('🪙', 0.55);
+      coin.position.set(x, y, 0.25);
+      scene.add(coin);
+      coins.push({ mesh: coin, x, y, taken: false });
+    }
+
+    for (const [x, y] of [
+      [-0.1, 1.45],
+      [5.7, 1.45],
+      [10.6, 1.45],
+    ]) {
+      const hazard = makeEmojiSprite('😡', 0.7);
+      hazard.position.set(x, y, 0.3);
+      scene.add(hazard);
+      hazards.push({ mesh: hazard, x, y, baseX: x });
+    }
+
+    goal = makeGoal();
+    goal.position.set(15.9, 2.05, 0.2);
+    scene.add(goal);
+
+    const player = makeEmojiSprite('🏃', 0.9);
+    scene.add(player);
+
+    restart();
+    animate();
+
+    window.addEventListener('keydown', (event) => {
+      keys.add(event.code);
+      if (event.code === 'KeyR') restart();
+    });
+
+    window.addEventListener('keyup', (event) => {
+      keys.delete(event.code);
+    });
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    function restart() {
+      state = {
+        mode: 'playing',
+        x: WORLD.startX,
+        y: WORLD.startY,
+        coins: 0,
+        time: 0,
+      };
+      player.position.set(state.x, state.y, 0.5);
+      for (const coin of coins) {
+        coin.taken = false;
+        coin.mesh.visible = true;
+      }
+      banner.classList.remove('show');
+      updateHud();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 0.033);
+      if (state.mode === 'playing') tick(dt);
+      render();
+    }
+
+    function tick(dt) {
+      state.time += dt;
+
+      const speed = 4.2;
+      let dx = 0;
+      let dy = 0;
+      if (keys.has('KeyA')) dx -= 1;
+      if (keys.has('KeyD')) dx += 1;
+      if (keys.has('KeyW')) dy += 1;
+      if (keys.has('KeyS')) dy -= 1;
+
+      const len = Math.hypot(dx, dy);
+      if (len > 0) {
+        dx /= len;
+        dy /= len;
+      }
+
+      state.x = clamp(state.x + dx * speed * dt, WORLD.minX, WORLD.maxX);
+      state.y = clamp(state.y + dy * speed * dt, WORLD.minY, WORLD.maxY);
+      state.y = Math.max(state.y, floorHeightAt(state.x) + 0.48);
+      player.position.set(state.x, state.y, 0.5);
+      player.material.rotation = Math.sin(state.time * 10) * 0.04;
+
+      for (let i = 0; i < coins.length; i++) {
+        const coin = coins[i];
+        coin.mesh.rotation.z += dt * 3.4;
+        coin.mesh.position.y = coin.y + Math.sin(state.time * 4 + i) * 0.08;
+        if (!coin.taken && dist2(state.x, state.y, coin.x, coin.y) < 0.42) {
+          coin.taken = true;
+          coin.mesh.visible = false;
+          state.coins += 1;
+        }
+      }
+
+      for (let i = 0; i < hazards.length; i++) {
+        const hazard = hazards[i];
+        hazard.x = hazard.baseX + Math.sin(state.time * 1.7 + i) * 0.55;
+        hazard.mesh.position.x = hazard.x;
+        hazard.mesh.rotation.z = Math.sin(state.time * 8 + i) * 0.08;
+        if (dist2(state.x, state.y, hazard.x, hazard.y) < 0.62) {
+          end('lost');
+        }
+      }
+
+      if (Math.abs(state.x - 15.9) < 0.75 && Math.abs(state.y - 2.05) < 1.35) {
+        end('won');
+      }
+
+      const targetX = clamp(state.x + 3.2, -4, 13);
+      camera.position.x += (targetX - camera.position.x) * 0.08;
+      camera.lookAt(camera.position.x, 2.7, 0);
+
+      updateHud();
+    }
+
+    function render() {
+      for (let i = 0; i < clouds.length; i++) {
+        clouds[i].position.x += Math.sin(state.time * 0.35 + i) * 0.0015;
+      }
+      renderer.render(scene, camera);
+    }
+
+    function end(mode) {
+      state.mode = mode;
+      bannerTitle.textContent = mode === 'won' ? 'FLAG!' : 'OUCH!';
+      banner.classList.add('show');
+      updateHud();
+    }
+
+    function updateHud() {
+      coinsEl.textContent = `🪙 ${state.coins} / ${WORLD.coinTotal}`;
+      timeEl.textContent = `⏱ ${state.time.toFixed(1)}`;
+    }
+
+    function floorHeightAt(x) {
+      let top = 0.65;
+      for (const block of blocks) {
+        const inX = x >= block.x - block.w * 0.5 && x <= block.x + block.w * 0.5;
+        const candidateTop = block.y + block.h * 0.5;
+        if (inX && candidateTop <= state.y + 0.35) top = Math.max(top, candidateTop);
+      }
+      return top;
+    }
+
+    function makeBlock(w, h, d, topColor, sideColor) {
+      const group = new THREE.Group();
+      const box = new THREE.Mesh(
+        new THREE.BoxGeometry(w, h, d),
+        [
+          new THREE.MeshLambertMaterial({ color: sideColor }),
+          new THREE.MeshLambertMaterial({ color: sideColor }),
+          new THREE.MeshLambertMaterial({ color: topColor }),
+          new THREE.MeshLambertMaterial({ color: sideColor }),
+          new THREE.MeshLambertMaterial({ color: sideColor }),
+          new THREE.MeshLambertMaterial({ color: sideColor }),
+        ],
+      );
+      group.add(box);
+
+      const lineMat = new THREE.LineBasicMaterial({ color: COLORS.shadow, transparent: true, opacity: 0.25 });
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(box.geometry), lineMat);
+      group.add(edges);
+      return group;
+    }
+
+    function makeEmojiSprite(emoji, scale) {
+      const c = document.createElement('canvas');
+      c.width = 128;
+      c.height = 128;
+      const ctx = c.getContext('2d');
+      ctx.clearRect(0, 0, c.width, c.height);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = '96px "Apple Color Emoji", "Segoe UI Emoji", sans-serif';
+      ctx.fillText(emoji, 64, 66);
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.magFilter = THREE.NearestFilter;
+      tex.minFilter = THREE.NearestFilter;
+      tex.generateMipmaps = false;
+
+      const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+      sprite.scale.set(scale, scale, 1);
+      return sprite;
+    }
+
+    function makeGoal() {
+      const group = new THREE.Group();
+      const pole = new THREE.Mesh(
+        new THREE.BoxGeometry(0.1, 3.0, 0.1),
+        new THREE.MeshLambertMaterial({ color: COLORS.pole }),
+      );
+      pole.position.y = 0.4;
+      group.add(pole);
+
+      const flag = makeEmojiSprite('🚩', 1.0);
+      flag.position.set(0.42, 1.35, 0.08);
+      group.add(flag);
+      return group;
+    }
+
+    function dist2(ax, ay, bx, by) {
+      return (ax - bx) * (ax - bx) + (ay - by) * (ay - by);
+    }
+
+    function clamp(v, min, max) {
+      return Math.max(min, Math.min(max, v));
+    }
+  </script>
+</body>
+</html>
